@@ -204,11 +204,71 @@ https://us-central1-aiplatform.googleapis.com/v1/projects/PROJECT_ID/locations/u
 
 ### 7. Hugging Face Setup
 
-1. **Create Account**: Sign up at [Hugging Face](https://huggingface.co)
-2. **Get API Key**: Go to Settings > Access Tokens
-3. **Verify LLaMA Access**: Ensure you have access to [meta-llama/Llama-3.1-8B-Instruct](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct)
+**⚠️ CRITICAL**: The Hugging Face API token is essential for the LLaMA creative expert (Marcus) to function.
 
-### 8. Start Development Server
+#### 7.1 Create Account
+Sign up at [Hugging Face](https://huggingface.co) if you don't have an account.
+
+#### 7.2 Create READ Token (Required)
+
+1. **Visit Token Settings**: https://huggingface.co/settings/tokens
+2. **Click "Create new token"**
+3. **Configure Token**:
+   - **Name**: `Creative-Creatives-V2-LLaMA`
+   - **Type**: **READ** (Not write, not fine-grained)
+   - **Description**: Token for Creative Creatives V2 LLaMA inference
+4. **Click "Create token"**
+5. **Copy the token immediately** (it's only shown once!)
+
+#### 7.3 Verify Token
+
+Test your token immediately:
+
+```bash
+# Test your token with curl
+curl -H "Authorization: Bearer hf_your_token_here" \
+     https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct
+```
+
+**Expected Response**: JSON with model information  
+**Error Response**: "Not Found%" indicates invalid token
+
+#### 7.4 Model Access
+Ensure you have access to [meta-llama/Llama-3.1-8B-Instruct](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct). This is a public model that should be accessible with any READ token.
+
+#### 7.5 Common Token Issues
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| "An error occurred while fetching the blob" | Invalid/expired token | Create new READ token |
+| "Not Found%" | Token authentication failed | Verify token format and permissions |
+| "Rate limited" | Too many requests | Wait or upgrade to Pro account |
+| "Model not found" | Insufficient permissions | Ensure READ access to public models |
+
+### 8. Test API Integrations
+
+**Before starting the development server**, verify all APIs are working:
+
+```bash
+# Run comprehensive API tests
+node test-simple.js
+```
+
+**Expected Output**:
+```
+🎯 Overall: 4/4 tests passed
+🎉 ALL TESTS PASSED! Your APIs are ready to go!
+```
+
+**If tests fail**:
+- Review error messages carefully
+- Check your `.env.local` file for correct values
+- Verify API keys and permissions
+- See troubleshooting section below
+
+### 9. Start Development Server
+
+Once all tests pass:
 
 ```bash
 npm run dev
@@ -270,10 +330,12 @@ npm start
    - Check Firebase project configuration
    - Ensure domain is added to authorized domains
 
-2. **LLaMA API Error**:
-   - Verify Hugging Face API key
-   - Check model access permissions
-   - Ensure sufficient API quota
+2. **LLaMA API Error** ("An error occurred while fetching the blob"):
+   - **Most Common**: Invalid or expired Hugging Face token
+   - **Solution**: Create new READ token at https://huggingface.co/settings/tokens
+   - **Test token**: `curl -H "Authorization: Bearer YOUR_TOKEN" https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct`
+   - **Verify model access**: Ensure you can access meta-llama/Llama-3.1-8B-Instruct
+   - **Check API quota**: Verify sufficient quota remaining
 
 3. **Google AI API Error**:
    - Verify Google Cloud project setup
@@ -288,6 +350,13 @@ npm start
 ### Debug Commands
 
 ```bash
+# Test all API integrations
+node test-simple.js
+
+# Test individual Hugging Face token
+curl -H "Authorization: Bearer $(grep HUGGINGFACE_API_KEY .env.local | cut -d'=' -f2)" \
+     https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct
+
 # Check for linting issues
 npm run lint
 

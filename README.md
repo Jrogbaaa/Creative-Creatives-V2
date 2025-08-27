@@ -85,6 +85,18 @@ All core features are complete and tested:
 - ✅ Brand analysis and conversation system
 - ✅ 30-second ad generation pipeline ready
 
+### ⚠️ Setup Requirements
+
+**Critical**: You must create a valid Hugging Face API token for the LLaMA creative expert:
+
+1. Visit: https://huggingface.co/settings/tokens
+2. Create a **READ TOKEN** (not write or fine-grained)
+3. Name it: `Creative-Creatives-V2-LLaMA`
+4. Update your `.env.local` file with the new token
+5. Run `node test-simple.js` to verify all APIs are working
+
+**API Status Check**: The project includes comprehensive API testing to verify all integrations are working properly.
+
 ### Installation
 
 1. **Clone the repository**
@@ -116,15 +128,35 @@ All core features are complete and tested:
    **Required APIs:**
    - Firebase project configuration
    - Google Cloud service account credentials  
-   - Hugging Face API key for LLaMA access
+   - **Hugging Face READ TOKEN** for LLaMA access (see troubleshooting below)
    - Google AI Platform API access
+
+   ⚠️ **Hugging Face Token Troubleshooting**:
+   
+   If you encounter "An error occurred while fetching the blob" or "Not Found" errors:
+   
+   ```bash
+   # Test your token directly
+   curl -H "Authorization: Bearer YOUR_TOKEN" https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct
+   ```
+   
+   If this returns "Not Found%", your token is invalid. Create a new READ token at:
+   https://huggingface.co/settings/tokens
 
 5. **Start the development server**
    ```bash
    npm run dev
    ```
 
-6. **Open your browser**
+6. **Test your API integrations**
+   ```bash
+   # Run comprehensive API tests
+   node test-simple.js
+   ```
+   
+   All tests should pass before proceeding. If Hugging Face API fails, see token troubleshooting above.
+
+7. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
 
 ## 📖 Usage Guide

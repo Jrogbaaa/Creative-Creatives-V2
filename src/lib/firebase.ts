@@ -27,10 +27,11 @@ export const functions = getFunctions(app);
 // Initialize Analytics (only in browser)
 export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
 
-// Connect to emulators in development
+// Note: Emulators disabled for production compatibility
+// Uncomment below for local development with Firebase emulators
+/*
 if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
   try {
-    // Connect to emulators if not already connected
     connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
     connectFirestoreEmulator(db, 'localhost', 8080);
     connectStorageEmulator(storage, 'localhost', 9199);
@@ -39,5 +40,6 @@ if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
     console.log('Emulators already connected or not available:', error);
   }
 }
+*/
 
 export default app;

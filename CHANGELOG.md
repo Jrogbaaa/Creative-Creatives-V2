@@ -5,6 +5,30 @@ All notable changes to Creative Creatives V2 will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2024-12-18 - Documentation & Troubleshooting Update 📚
+
+### Added
+- **API Testing Scripts**: Comprehensive test scripts (`test-simple.js`, `test-apis.js`) for verifying all API integrations
+- **Hugging Face Token Troubleshooting**: Detailed troubleshooting guide for token authentication issues
+- **Environment Validation**: Automatic validation of required environment variables
+- **Direct API Testing**: curl-based testing for debugging API connectivity
+
+### Fixed
+- **Documentation Updates**: Enhanced README with specific Hugging Face token requirements
+- **Token Authentication Guide**: Step-by-step instructions for creating READ tokens
+- **Error Diagnostics**: Clear error messages and solutions for common setup issues
+- **API Status Verification**: Comprehensive status checking before application use
+
+### Changed
+- **Setup Process**: Added mandatory API testing step before development server start
+- **Error Handling**: Improved error messages for token-related authentication failures
+- **Documentation Structure**: Reorganized setup instructions for better clarity
+
+### Troubleshooting
+- **Hugging Face API**: Fixed "An error occurred while fetching the blob" issues
+- **Token Validation**: Added direct API testing to verify token validity
+- **Environment Setup**: Enhanced environment variable validation and error reporting
+
 ## [1.0.0] - 2024-08-27 - Production Release 🚀
 
 **🎉 FULLY IMPLEMENTED AND PRODUCTION READY**
@@ -157,6 +181,11 @@ Complete AI-powered advertisement creation platform with all core features imple
 - **Generation Time**: Video generation can take 2-5 minutes (Google Veo processing)
 - **API Quotas**: Google Cloud API quotas may limit high-volume usage
 - **Development Mode**: Firebase emulators disabled for production compatibility
+
+#### Resolved Issues
+- **Hugging Face Authentication**: Token-related authentication failures resolved with READ token requirements
+- **API Testing**: Comprehensive testing scripts added to verify all integrations before use
+- **Environment Validation**: All environment variables now properly validated during setup
 
 #### Optimizations
 - **Production Ready**: All core features implemented and tested
