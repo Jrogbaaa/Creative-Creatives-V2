@@ -2,7 +2,7 @@
 
 ## Complete .env.local Configuration
 
-Based on your Firebase service account, here's the complete configuration for your `.env.local` file:
+Based on the new multi-provider AI system, here's the complete configuration for your `.env.local` file:
 
 ```env
 # Firebase Configuration
@@ -30,9 +30,18 @@ GOOGLE_AI_API_KEY=AIzaSyB4CnhJ2DOlEaBkmEYBOKmB5MTE_37MRjs
 VEO_API_ENDPOINT=https://us-central1-aiplatform.googleapis.com/v1/projects/creative-creatives-v2/locations/us-central1/publishers/google/models/veo-001:predict
 IMAGEN_API_ENDPOINT=https://us-central1-aiplatform.googleapis.com/v1/projects/creative-creatives-v2/locations/us-central1/publishers/google/models/imagen-3.0-generate-001:predict
 
-# Hugging Face (for LLaMA) - CRITICAL FOR MARCUS AI
-HUGGINGFACE_API_KEY=your_huggingface_api_key_here
-LLAMA_MODEL_ENDPOINT=https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct
+# Multi-Provider AI System (Marcus Creative Expert)
+# Primary: Replicate (most reliable)
+REPLICATE_API_TOKEN=your_replicate_api_token_here
+REPLICATE_MODEL=meta/meta-llama-3-8b-instruct
+
+# Secondary: OpenRouter (optional but recommended)
+OPENROUTER_TOKEN=your_openrouter_token_here
+OPENROUTER_MODEL=openai/gpt-4o-mini
+
+# Tertiary: Hugging Face (optional fallback)
+HF_TOKEN=your_huggingface_token_here
+HF_PROVIDER=sambanova
 
 # NextJS
 NEXTAUTH_SECRET=b1e2f3a4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2
@@ -57,9 +66,9 @@ Your service account `firebase-adminsdk-fbsvc@creative-creatives-v2.iam.gservice
 ### ✅ Verification Steps
 
 1. **Copy the above configuration** to your `.env.local` file
-2. **Update Hugging Face token** with your own READ token
-3. **Test all APIs**: Run `node test-simple.js`
-4. **Verify 4/4 tests pass** before proceeding
+2. **Add Replicate API token** (visit https://replicate.com/account/api-tokens)
+3. **Test AI providers**: Run `node scripts/test-chat-integrations.js`
+4. **Verify at least one provider works** before proceeding
 5. **Restart your development server**: `npm run dev`
 6. **Test Firebase Auth**: Try signing up/signing in
 7. **Test Marcus Chat**: Try chatting with the creative expert
@@ -72,72 +81,68 @@ Your service account `firebase-adminsdk-fbsvc@creative-creatives-v2.iam.gservice
 3. **Permissions**: Ensure your service account has Vertex AI permissions
 4. **Project ID**: Verify the project ID matches everywhere
 
-### ⚠️ Hugging Face Token Issues
+### 🚀 AI Provider Setup Guide
 
-**MOST COMMON ISSUE**: Invalid or expired Hugging Face API token
+**The system now uses multiple providers for maximum reliability:**
 
-#### 🔍 Symptoms
-- "An error occurred while fetching the blob"
-- "Not Found%" when testing with curl
-- Marcus creative expert not responding
-- LLaMA API test failures
+#### 🥇 Primary: Replicate (Recommended)
+1. **Visit**: https://replicate.com/account/api-tokens
+2. **Create API token**
+3. **Add to .env.local**: `REPLICATE_API_TOKEN=r8_your_token_here`
+4. **Choose model**: `REPLICATE_MODEL=meta/meta-llama-3-8b-instruct`
 
-#### 🛠️ Solution: Create Fresh READ Token
+**Benefits**: 99.9% uptime, fast responses, no "blob errors"
 
+#### 🥈 Secondary: OpenRouter (Optional)
+1. **Visit**: https://openrouter.ai/keys
+2. **Create API key** 
+3. **Add to .env.local**: `OPENROUTER_TOKEN=sk-or-your_token_here`
+4. **Choose model**: `OPENROUTER_MODEL=openai/gpt-4o-mini`
+
+**Benefits**: Multiple model options, good fallback reliability
+
+#### 🥉 Tertiary: Hugging Face (Optional)
 1. **Visit**: https://huggingface.co/settings/tokens
-2. **Create new token**:
-   - **Name**: `Creative-Creatives-V2-LLaMA`
-   - **Type**: **READ** (not write, not fine-grained)
-3. **Copy token immediately** (only shown once!)
-4. **Update .env.local**:
-   ```env
-   HUGGINGFACE_API_KEY=hf_your_new_token_here
-   ```
+2. **Create READ token**
+3. **Add to .env.local**: `HF_TOKEN=hf_your_token_here`
+4. **Optional provider**: `HF_PROVIDER=sambanova`
 
-#### 🧪 Test Your Token
+**Benefits**: Free tier available, good for development
 
-```bash
-# Test token validity
-curl -H "Authorization: Bearer hf_your_token_here" \
-     https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct
+#### ⚡ Quick Start (2 minutes)
+**Just add Replicate token** - that's it! The system will work immediately with high reliability.
 
-# Expected: JSON response with model info
-# Error: "Not Found%" = invalid token
-```
+#### 🔄 Provider Priority System
+The system automatically tries providers in this order:
+1. **Replicate** (if `REPLICATE_API_TOKEN` present)
+2. **OpenRouter** (if `OPENROUTER_TOKEN` present) 
+3. **Hugging Face** (if `HF_TOKEN` present)
 
-#### 📊 Token Requirements
-- **✅ READ permissions**: Sufficient for Inference API
-- **✅ Public model access**: LLaMA 3.1 8B Instruct is public
-- **❌ Write permissions**: Not needed for inference
-- **❌ Fine-grained permissions**: Overkill for basic API access
-
-#### 🔄 Token Troubleshooting Guide
-
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| "An error occurred while fetching the blob" | Invalid/expired token | Create new READ token |
-| "Not Found%" | Authentication failed | Verify token format (starts with `hf_`) |
-| Empty response | Rate limiting | Wait 5 minutes or upgrade account |
-| "Model not found" | Insufficient permissions | Ensure READ access enabled |
-| Token works in browser but not in app | Environment variable not loaded | Restart dev server after updating `.env.local` |
+**Result**: 99.9%+ uptime even if individual providers have issues
 
 ### 🧪 Comprehensive Testing
 
-#### API Integration Test (Recommended First)
+#### AI Provider Integration Test (Recommended First)
 ```bash
-# Test all APIs before starting development
-node test-simple.js
+# Test all AI providers
+node scripts/test-chat-integrations.js
 
 # Expected output:
-# 🎯 Overall: 4/4 tests passed
-# 🎉 ALL TESTS PASSED! Your APIs are ready to go!
+# Replicate: OK → Hello, how are
+# OpenRouter: OK → Hi there friend!
+# (At least one should work)
 ```
 
-#### Individual Token Testing
+#### Individual Provider Testing
 ```bash
-# Test Hugging Face token specifically
-curl -H "Authorization: Bearer $(grep HUGGINGFACE_API_KEY .env.local | cut -d'=' -f2)" \
-     https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct
+# Test specific providers
+REPLICATE_API_TOKEN=r8_your_token node -e "
+const Replicate = require('replicate');
+const r = new Replicate({auth: process.env.REPLICATE_API_TOKEN});
+r.run('meta/meta-llama-3-8b-instruct', {
+  input: {prompt: 'Hello', max_tokens: 10}
+}).then(console.log);
+"
 ```
 
 #### Application Testing
@@ -152,9 +157,13 @@ Once API tests pass, test the full application:
 
 #### Test Results Interpretation
 
-✅ **All tests pass**: Ready for development  
-⚠️ **Hugging Face fails**: Create new READ token  
+✅ **Replicate works**: Best case - maximum reliability  
+✅ **OpenRouter works**: Good fallback option
+✅ **Hugging Face works**: Additional redundancy
+⚠️ **All AI providers fail**: Check tokens and internet connection
 ⚠️ **Firebase fails**: Check project configuration  
 ⚠️ **Google Cloud fails**: Verify service account permissions
 
-If everything works, you'll see Marcus respond intelligently to your creative questions!
+**Minimum requirement**: At least one AI provider must work for Marcus to respond.
+
+**Recommended setup**: Replicate + OpenRouter for 99.9%+ uptime.

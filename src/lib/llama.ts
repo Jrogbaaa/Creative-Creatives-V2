@@ -1,10 +1,22 @@
 import { HfInference } from '@huggingface/inference';
+import Replicate from 'replicate';
 import { LlamaRequest, LlamaResponse, ChatMessage } from '@/types';
 
-const hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
+// Replicate client (primary provider)
+const replicate = new Replicate({
+  auth: process.env.REPLICATE_API_TOKEN,
+});
+
+// Support both HF_TOKEN (preferred) and HUGGINGFACE_TOKEN (legacy) as fallback
+const hfToken = process.env.HF_TOKEN || process.env.HUGGINGFACE_TOKEN;
+const hfProvider = process.env.HF_PROVIDER; // e.g. 'sambanova', 'together', etc.
+const hf = hfToken ? new HfInference(hfToken) : null;
 
 export class CreativeExpertLLama {
-  private model = 'meta-llama/Llama-3.1-8B-Instruct';
+  private replicateModel = process.env.REPLICATE_MODEL || 'meta/llama-2-70b-chat';
+  private replicateFallback = 'meta/llama-2-13b-chat'; // Smaller Replicate model fallback
+  private openRouterModel = process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini';
+  private hfModel = 'meta-llama/Llama-3.1-8B-Instruct'; // HF fallback if available
   
   private systemPrompt = `You are Marcus, a world-renowned creative director and advertising genius with 25+ years of experience creating award-winning campaigns for Fortune 500 companies. You've worked with brands like Nike, Apple, Coca-Cola, and Tesla.
 
@@ -34,37 +46,196 @@ Your goal is to help users create compelling 30-second advertisements by:
 Always ask thoughtful questions to uncover insights. Be specific in your recommendations and explain your creative reasoning. Think like both an artist and a strategist.`;
 
   async chat(messages: ChatMessage[], context?: any): Promise<string> {
-    try {
-      const formattedMessages = [
-        { role: 'system', content: this.systemPrompt },
-        ...messages.map(msg => ({
-          role: msg.role as 'user' | 'assistant',
-          content: msg.content
-        }))
-      ];
+    const formattedMessages = [
+      { role: 'system', content: this.systemPrompt },
+      ...messages.map(msg => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content
+      }))
+    ];
 
-      // Add context if available
-      if (context) {
-        const contextMessage = this.formatContext(context);
-        formattedMessages.splice(1, 0, {
-          role: 'system',
-          content: contextMessage
-        });
-      }
-
-      const response = await hf.chatCompletion({
-        model: this.model,
-        messages: formattedMessages,
-        max_tokens: 1000,
-        temperature: 0.7,
-        top_p: 0.9,
+    // Add context if available
+    if (context) {
+      const contextMessage = this.formatContext(context);
+      formattedMessages.splice(1, 0, {
+        role: 'system',
+        content: contextMessage
       });
-
-      return response.choices[0]?.message?.content || 'I apologize, but I encountered an issue. Could you please try again?';
-    } catch (error) {
-      console.error('LLaMA chat error:', error);
-      throw new Error('Failed to generate response from creative expert');
     }
+
+    // Try providers in priority order: Replicate → OpenRouter → HF
+    return await this.tryAllProviders(formattedMessages, {
+      max_tokens: 1500,
+      temperature: 0.7,
+      top_p: 0.9,
+      frequency_penalty: 0.1,
+    });
+  }
+
+  private async tryModelsSequentially(messages: any[], params: any): Promise<string> {
+    if (!hf) throw new Error('HF client not available');
+    
+    const modelsToTry = [this.hfModel];
+    
+    for (const model of modelsToTry) {
+      try {
+        console.log(`Attempting to use HF model: ${model}`);
+        
+        const response = await hf.chatCompletion({
+          model,
+          provider: hfProvider, // leverage Inference Providers if configured
+          messages,
+          ...params
+        });
+
+        const content = response.choices[0]?.message?.content;
+        if (content) {
+          console.log('✅ HF model succeeded');
+          return content;
+        }
+      } catch (error: any) {
+        console.error(`Error with HF model ${model}:`, error.message);
+        throw new Error(`HF failed: ${error.message}`);
+      }
+    }
+    
+    return 'I apologize, but I encountered an issue with HF models.';
+  }
+
+  private async sendChatViaReplicate(messages: any[], params: any): Promise<string> {
+    // Convert messages to Replicate format (prompt-based)
+    const prompt = this.formatMessagesAsPrompt(messages);
+    
+    const modelsToTry = [this.replicateModel, this.replicateFallback];
+    
+    for (const model of modelsToTry) {
+      try {
+        console.log(`Trying Replicate model: ${model}`);
+        
+        const output = await replicate.run(model as `${string}/${string}`, {
+          input: {
+            prompt,
+            max_tokens: params?.max_tokens ?? 1500,
+            temperature: params?.temperature ?? 0.7,
+            top_p: params?.top_p ?? 0.9,
+            repetition_penalty: 1.1, // Replicate uses repetition_penalty instead of frequency_penalty
+          }
+        }) as string[];
+
+        // Replicate returns an array of strings for streaming models
+        const content = Array.isArray(output) ? output.join('') : output;
+        if (typeof content === 'string' && content.trim()) {
+          console.log(`✅ Replicate model ${model} succeeded`);
+          return content.trim();
+        }
+        
+        console.log(`⚠️ ${model} returned empty content, trying next model...`);
+      } catch (error: any) {
+        console.error(`Replicate model ${model} error:`, error.message);
+        if (model === modelsToTry[modelsToTry.length - 1]) {
+          throw error; // Last model, propagate error
+        }
+        continue; // Try next model
+      }
+    }
+    
+    throw new Error('All Replicate models failed');
+  }
+
+  private formatMessagesAsPrompt(messages: any[]): string {
+    // Convert chat messages to a single prompt format for Replicate
+    return messages.map(msg => {
+      const role = msg.role === 'system' ? 'System' : 
+                   msg.role === 'user' ? 'Human' : 'Assistant';
+      return `${role}: ${msg.content}`;
+    }).join('\n\n') + '\n\nAssistant:';
+  }
+
+  private async tryAllProviders(messages: any[], params: any): Promise<string> {
+    // 1) Try Replicate first (most reliable)
+    if (process.env.REPLICATE_API_TOKEN) {
+      try {
+        console.log('🔄 Trying Replicate...');
+        const content = await this.sendChatViaReplicate(messages, params);
+        if (content) {
+          console.log('✅ Replicate succeeded');
+          return content;
+        }
+      } catch (error: any) {
+        console.error('Replicate error:', error.message);
+      }
+    }
+
+    // 2) Try OpenRouter as secondary
+    if (process.env.OPENROUTER_TOKEN) {
+      try {
+        console.log('🔄 Trying OpenRouter fallback...');
+        const content = await this.sendChatViaOpenRouter(messages, params);
+        if (content) {
+          console.log('✅ OpenRouter succeeded');
+          return content;
+        }
+      } catch (error: any) {
+        console.error('OpenRouter error:', error.message);
+      }
+    }
+
+    // 3) Try Hugging Face as last resort (if available)
+    if (hf) {
+      try {
+        console.log('🔄 Trying HF as last resort...');
+        return await this.tryModelsSequentially(messages, params);
+      } catch (error: any) {
+        console.error('HF error:', error.message);
+      }
+    }
+
+    throw new Error('All providers failed - no working chat provider available');
+  }
+
+  private async sendChatViaOpenRouter(messages: any[], params: any): Promise<string> {
+    const url = 'https://openrouter.ai/api/v1/chat/completions';
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${process.env.OPENROUTER_TOKEN}`,
+      'Content-Type': 'application/json',
+    };
+
+    const body = JSON.stringify({
+      model: this.openRouterModel,
+      messages,
+      max_tokens: params?.max_tokens ?? 1000,
+      temperature: params?.temperature ?? 0.7,
+      top_p: params?.top_p ?? 0.9,
+      frequency_penalty: params?.frequency_penalty ?? 0.0,
+    });
+
+    const response = await fetch(url, { method: 'POST', headers, body });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`OpenRouter HTTP ${response.status}: ${text.slice(0, 200)}`);
+    }
+
+    const json = await response.json();
+    const content = json?.choices?.[0]?.message?.content;
+    if (!content) {
+      throw new Error('OpenRouter returned no content');
+    }
+    return content;
+  }
+
+  private isKnownScoutIssue(error: any): boolean {
+    const knownErrors = [
+      'blob',
+      '404',
+      'not found',
+      'model not available',
+      'service unavailable',
+      '503'
+    ];
+    
+    return knownErrors.some(err => 
+      error.message?.toLowerCase().includes(err.toLowerCase())
+    );
   }
 
   async generateBrandAnalysis(brandInfo: any): Promise<string> {
@@ -83,18 +254,18 @@ Please provide:
 4. Visual and tonal direction suggestions
 5. Key messaging themes`;
 
-    try {
-      const response = await hf.chatCompletion({
-        model: this.model,
-        messages: [
-          { role: 'system', content: this.systemPrompt },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 1200,
-        temperature: 0.6,
-      });
+    const messages = [
+      { role: 'system', content: this.systemPrompt },
+      { role: 'user', content: prompt }
+    ];
 
-      return response.choices[0]?.message?.content || 'Unable to generate brand analysis';
+    try {
+      return await this.tryAllProviders(messages, {
+        max_tokens: 1500,
+        temperature: 0.6,
+        top_p: 0.9,
+        frequency_penalty: 0.1,
+      });
     } catch (error) {
       console.error('Brand analysis error:', error);
       throw new Error('Failed to generate brand analysis');
@@ -119,18 +290,19 @@ For each concept, provide:
 
 Keep each concept distinct and engaging.`;
 
-    try {
-      const response = await hf.chatCompletion({
-        model: this.model,
-        messages: [
-          { role: 'system', content: this.systemPrompt },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 1500,
-        temperature: 0.8,
-      });
+    const messages = [
+      { role: 'system', content: this.systemPrompt },
+      { role: 'user', content: prompt }
+    ];
 
-      const content = response.choices[0]?.message?.content || '';
+    try {
+      const content = await this.tryAllProviders(messages, {
+        max_tokens: 2000,
+        temperature: 0.8,
+        top_p: 0.9,
+        frequency_penalty: 0.2,
+      });
+      
       // Split concepts (this is a simplified approach)
       return content.split(/(?=Concept \d|Option \d)/i).filter(concept => concept.trim().length > 0);
     } catch (error) {
@@ -155,18 +327,18 @@ Generate a clear, detailed prompt that includes:
 
 The prompt should be specific enough for AI video generation while maintaining creative vision.`;
 
-    try {
-      const response = await hf.chatCompletion({
-        model: this.model,
-        messages: [
-          { role: 'system', content: this.systemPrompt },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 800,
-        temperature: 0.6,
-      });
+    const messages = [
+      { role: 'system', content: this.systemPrompt },
+      { role: 'user', content: prompt }
+    ];
 
-      return response.choices[0]?.message?.content || 'Unable to generate video prompt';
+    try {
+      return await this.tryAllProviders(messages, {
+        max_tokens: 1000,
+        temperature: 0.6,
+        top_p: 0.9,
+        frequency_penalty: 0.1,
+      });
     } catch (error) {
       console.error('Video prompt generation error:', error);
       throw new Error('Failed to generate video prompt');
@@ -186,18 +358,18 @@ The prompt should be:
 - Mention any brand elements or requirements
 - Be optimized for AI image generation`;
 
-    try {
-      const response = await hf.chatCompletion({
-        model: this.model,
-        messages: [
-          { role: 'system', content: this.systemPrompt },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 600,
-        temperature: 0.6,
-      });
+    const messages = [
+      { role: 'system', content: this.systemPrompt },
+      { role: 'user', content: prompt }
+    ];
 
-      return response.choices[0]?.message?.content || 'Unable to generate image prompt';
+    try {
+      return await this.tryAllProviders(messages, {
+        max_tokens: 800,
+        temperature: 0.6,
+        top_p: 0.9,
+        frequency_penalty: 0.1,
+      });
     } catch (error) {
       console.error('Image prompt generation error:', error);
       throw new Error('Failed to generate image prompt');

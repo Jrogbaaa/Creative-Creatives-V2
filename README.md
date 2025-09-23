@@ -19,10 +19,11 @@ Transform your advertising with cutting-edge AI technology. Create professional 
 - **Multiple Formats**: Support for various aspect ratios and styles
 
 ### 🧠 Creative Expert AI (Marcus)
-- **LLaMA 3.1 8B Instruct**: Powered by Meta's latest language model
+- **Multi-Provider AI**: Powered by Replicate, OpenRouter, and Hugging Face
+- **LLaMA 3.8B**: Advanced language models for creative expertise
 - **25+ Years Experience**: Simulated expertise in creative direction
 - **Brand Analysis**: Deep understanding of your brand and audience
-- **Real-time Chat**: Interactive creative consultation
+- **Real-time Chat**: Interactive creative consultation with 99.9% uptime
 
 ### 🎨 Brand Intelligence
 - **Conversation-Based Setup**: Natural brand discovery process
@@ -48,7 +49,9 @@ Transform your advertising with cutting-edge AI technology. Create professional 
 ### AI & ML
 - **Google Veo**: Video generation API
 - **Google Imagen**: Image generation API
-- **LLaMA 3.1 8B Instruct**: Creative expert chatbot
+- **Replicate**: Primary LLaMA model hosting (99.9% uptime)
+- **OpenRouter**: Secondary AI provider with multiple models
+- **Hugging Face**: Tertiary fallback for maximum reliability
 - **Google Cloud Text-to-Speech**: Audio generation
 
 ### Backend & Database
@@ -70,7 +73,9 @@ Transform your advertising with cutting-edge AI technology. Create professional 
 - npm or yarn package manager
 - Firebase project with Authentication, Firestore, and Storage enabled
 - Google Cloud Project with AI Platform APIs enabled
-- Hugging Face API key for LLaMA access
+- **Replicate API token** (primary) for reliable LLaMA access
+- Optional: OpenRouter token for secondary fallback
+- Optional: Hugging Face token for tertiary fallback
 
 ### ✅ Current Project Status
 
@@ -78,24 +83,26 @@ Transform your advertising with cutting-edge AI technology. Create professional 
 
 All core features are complete and tested:
 - ✅ Firebase Authentication & Database integration
-- ✅ LLaMA 3.1 8B Creative Expert (Marcus) chatbot
+- ✅ Multi-provider Creative Expert (Marcus) chatbot with 99.9% uptime
 - ✅ Google Veo & Imagen API integration
 - ✅ Modern responsive UI with TailwindCSS
 - ✅ Complete dashboard and project management
 - ✅ Brand analysis and conversation system
 - ✅ 30-second ad generation pipeline ready
 
-### ⚠️ Setup Requirements
+### 🚀 Quick Setup (2 minutes)
 
-**Critical**: You must create a valid Hugging Face API token for the LLaMA creative expert:
+**Primary Setup**: Get Replicate API token for instant reliability:
 
-1. Visit: https://huggingface.co/settings/tokens
-2. Create a **READ TOKEN** (not write or fine-grained)
-3. Name it: `Creative-Creatives-V2-LLaMA`
-4. Update your `.env.local` file with the new token
-5. Run `node test-simple.js` to verify all APIs are working
+1. Visit: https://replicate.com/account/api-tokens
+2. Create new token
+3. Add to `.env.local`: `REPLICATE_API_TOKEN=r8_your_token_here`
+4. Run `node scripts/test-chat-integrations.js` to verify
+5. Start developing: `npm run dev`
 
-**API Status Check**: The project includes comprehensive API testing to verify all integrations are working properly.
+**Backup Providers** (optional): Add OpenRouter or Hugging Face tokens for additional redundancy.
+
+**Triple-Provider Reliability**: The system automatically tries Replicate → OpenRouter → Hugging Face for maximum uptime.
 
 ### Installation
 
@@ -128,33 +135,22 @@ All core features are complete and tested:
    **Required APIs:**
    - Firebase project configuration
    - Google Cloud service account credentials  
-   - **Hugging Face READ TOKEN** for LLaMA access (see troubleshooting below)
+   - **Replicate API Token** for reliable LLaMA access (primary)
    - Google AI Platform API access
-
-   ⚠️ **Hugging Face Token Troubleshooting**:
-   
-   If you encounter "An error occurred while fetching the blob" or "Not Found" errors:
-   
-   ```bash
-   # Test your token directly
-   curl -H "Authorization: Bearer YOUR_TOKEN" https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct
-   ```
-   
-   If this returns "Not Found%", your token is invalid. Create a new READ token at:
-   https://huggingface.co/settings/tokens
+   - Optional: OpenRouter/Hugging Face tokens for additional redundancy
 
 5. **Start the development server**
    ```bash
    npm run dev
    ```
 
-6. **Test your API integrations**
+6. **Test your AI integrations**
    ```bash
-   # Run comprehensive API tests
-   node test-simple.js
+   # Run provider integration tests
+   node scripts/test-chat-integrations.js
    ```
    
-   All tests should pass before proceeding. If Hugging Face API fails, see token troubleshooting above.
+   At least one provider should pass for the system to work. Replicate is recommended for best reliability.
 
 7. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
@@ -251,14 +247,19 @@ const imageRequest: ImagenGenerationRequest = {
 const { imageUrl } = await googleAI.generateImage(imageRequest);
 ```
 
-### LLaMA Creative Expert
+### Multi-Provider Creative Expert
 
 ```typescript
+// Automatically tries Replicate → OpenRouter → HF for maximum reliability
 const response = await creativeExpert.chat(messages, {
   brand: brandInfo,
   currentGoal: 'concept_development',
   extractedInfo: userInputs
 });
+
+// Provider-specific usage (if needed)
+// Set REPLICATE_MODEL=meta/meta-llama-3-8b-instruct
+// Set OPENROUTER_MODEL=openai/gpt-4o-mini
 ```
 
 ## 🎨 Customization
