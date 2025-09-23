@@ -97,7 +97,7 @@ All core features are complete and tested:
 1. Visit: https://replicate.com/account/api-tokens
 2. Create new token
 3. Add to `.env.local`: `REPLICATE_API_TOKEN=r8_your_token_here`
-4. Run `node scripts/test-chat-integrations.js` to verify
+4. Run `node test-providers.js` to verify
 5. Start developing: `npm run dev`
 
 **Backup Providers** (optional): Add OpenRouter or Hugging Face tokens for additional redundancy.
@@ -147,7 +147,7 @@ All core features are complete and tested:
 6. **Test your AI integrations**
    ```bash
    # Run provider integration tests
-   node scripts/test-chat-integrations.js
+   node test-providers.js
    ```
    
    At least one provider should pass for the system to work. Replicate is recommended for best reliability.

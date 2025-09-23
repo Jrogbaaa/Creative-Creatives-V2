@@ -67,7 +67,7 @@ Your service account `firebase-adminsdk-fbsvc@creative-creatives-v2.iam.gservice
 
 1. **Copy the above configuration** to your `.env.local` file
 2. **Add Replicate API token** (visit https://replicate.com/account/api-tokens)
-3. **Test AI providers**: Run `node scripts/test-chat-integrations.js`
+3. **Test AI providers**: Run `node test-providers.js`
 4. **Verify at least one provider works** before proceeding
 5. **Restart your development server**: `npm run dev`
 6. **Test Firebase Auth**: Try signing up/signing in
@@ -125,7 +125,7 @@ The system automatically tries providers in this order:
 #### AI Provider Integration Test (Recommended First)
 ```bash
 # Test all AI providers
-node scripts/test-chat-integrations.js
+node test-providers.js
 
 # Expected output:
 # Replicate: OK → Hello, how are
