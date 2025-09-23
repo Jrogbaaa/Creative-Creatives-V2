@@ -1,6 +1,7 @@
 import { HfInference } from '@huggingface/inference';
 import Replicate from 'replicate';
 import { LlamaRequest, LlamaResponse, ChatMessage } from '@/types';
+import { logger, getUserId } from './logger';
 
 // Replicate client (primary provider)
 const replicate = new Replicate({
@@ -75,9 +76,13 @@ Always ask thoughtful questions to uncover insights. Be specific in your recomme
   private async tryModelsSequentially(messages: any[], params: any): Promise<string> {
     if (!hf) throw new Error('HF client not available');
     
+    const userId = getUserId();
     const modelsToTry = [this.hfModel];
     
     for (const model of modelsToTry) {
+      const startTime = Date.now();
+      logger.aiProviderAttempt('huggingface', model, userId);
+      
       try {
         console.log(`Attempting to use HF model: ${model}`);
         
@@ -88,13 +93,20 @@ Always ask thoughtful questions to uncover insights. Be specific in your recomme
           ...params
         });
 
+        const responseTime = Date.now() - startTime;
         const content = response.choices[0]?.message?.content;
+        
         if (content) {
           console.log('✅ HF model succeeded');
+          logger.aiProviderSuccess('huggingface', model, responseTime, content.length, userId);
           return content;
         }
+        
+        logger.aiProviderError('huggingface', model, 'No content returned', responseTime, userId);
       } catch (error: any) {
+        const responseTime = Date.now() - startTime;
         console.error(`Error with HF model ${model}:`, error.message);
+        logger.aiProviderError('huggingface', model, error.message, responseTime, userId);
         throw new Error(`HF failed: ${error.message}`);
       }
     }
@@ -105,10 +117,14 @@ Always ask thoughtful questions to uncover insights. Be specific in your recomme
   private async sendChatViaReplicate(messages: any[], params: any): Promise<string> {
     // Convert messages to Replicate format (prompt-based)
     const prompt = this.formatMessagesAsPrompt(messages);
+    const userId = getUserId();
     
     const modelsToTry = [this.replicateModel, this.replicateFallback];
     
     for (const model of modelsToTry) {
+      const startTime = Date.now();
+      logger.aiProviderAttempt('replicate', model, userId);
+      
       try {
         console.log(`Trying Replicate model: ${model}`);
         
@@ -122,16 +138,23 @@ Always ask thoughtful questions to uncover insights. Be specific in your recomme
           }
         }) as string[];
 
+        const responseTime = Date.now() - startTime;
+        
         // Replicate returns an array of strings for streaming models
         const content = Array.isArray(output) ? output.join('') : output;
         if (typeof content === 'string' && content.trim()) {
           console.log(`✅ Replicate model ${model} succeeded`);
+          logger.aiProviderSuccess('replicate', model, responseTime, content.length, userId);
           return content.trim();
         }
         
         console.log(`⚠️ ${model} returned empty content, trying next model...`);
+        logger.aiProviderError('replicate', model, 'Empty response returned', responseTime, userId);
       } catch (error: any) {
+        const responseTime = Date.now() - startTime;
         console.error(`Replicate model ${model} error:`, error.message);
+        logger.aiProviderError('replicate', model, error.message, responseTime, userId);
+        
         if (model === modelsToTry[modelsToTry.length - 1]) {
           throw error; // Last model, propagate error
         }
@@ -152,6 +175,9 @@ Always ask thoughtful questions to uncover insights. Be specific in your recomme
   }
 
   private async tryAllProviders(messages: any[], params: any): Promise<string> {
+    const userId = getUserId();
+    let lastError: Error | null = null;
+    
     // 1) Try Replicate first (most reliable)
     if (process.env.REPLICATE_API_TOKEN) {
       try {
@@ -163,6 +189,8 @@ Always ask thoughtful questions to uncover insights. Be specific in your recomme
         }
       } catch (error: any) {
         console.error('Replicate error:', error.message);
+        lastError = error;
+        logger.aiProviderFallback('replicate', 'openrouter', error.message, userId);
       }
     }
 
@@ -177,6 +205,8 @@ Always ask thoughtful questions to uncover insights. Be specific in your recomme
         }
       } catch (error: any) {
         console.error('OpenRouter error:', error.message);
+        lastError = error;
+        logger.aiProviderFallback('openrouter', 'huggingface', error.message, userId);
       }
     }
 
@@ -187,40 +217,71 @@ Always ask thoughtful questions to uncover insights. Be specific in your recomme
         return await this.tryModelsSequentially(messages, params);
       } catch (error: any) {
         console.error('HF error:', error.message);
+        lastError = error;
       }
     }
+
+    // Log total provider chain failure
+    logger.error('ai_provider', 'all_providers_failed', {
+      lastError: lastError?.message || 'Unknown error',
+      providersAttempted: [
+        process.env.REPLICATE_API_TOKEN ? 'replicate' : null,
+        process.env.OPENROUTER_TOKEN ? 'openrouter' : null,
+        hf ? 'huggingface' : null
+      ].filter(Boolean)
+    }, userId);
 
     throw new Error('All providers failed - no working chat provider available');
   }
 
   private async sendChatViaOpenRouter(messages: any[], params: any): Promise<string> {
-    const url = 'https://openrouter.ai/api/v1/chat/completions';
-    const headers: Record<string, string> = {
-      'Authorization': `Bearer ${process.env.OPENROUTER_TOKEN}`,
-      'Content-Type': 'application/json',
-    };
+    const userId = getUserId();
+    const startTime = Date.now();
+    
+    logger.aiProviderAttempt('openrouter', this.openRouterModel, userId);
+    
+    try {
+      const url = 'https://openrouter.ai/api/v1/chat/completions';
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${process.env.OPENROUTER_TOKEN}`,
+        'Content-Type': 'application/json',
+      };
 
-    const body = JSON.stringify({
-      model: this.openRouterModel,
-      messages,
-      max_tokens: params?.max_tokens ?? 1000,
-      temperature: params?.temperature ?? 0.7,
-      top_p: params?.top_p ?? 0.9,
-      frequency_penalty: params?.frequency_penalty ?? 0.0,
-    });
+      const body = JSON.stringify({
+        model: this.openRouterModel,
+        messages,
+        max_tokens: params?.max_tokens ?? 1000,
+        temperature: params?.temperature ?? 0.7,
+        top_p: params?.top_p ?? 0.9,
+        frequency_penalty: params?.frequency_penalty ?? 0.0,
+      });
 
-    const response = await fetch(url, { method: 'POST', headers, body });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`OpenRouter HTTP ${response.status}: ${text.slice(0, 200)}`);
+      const response = await fetch(url, { method: 'POST', headers, body });
+      const responseTime = Date.now() - startTime;
+      
+      if (!response.ok) {
+        const text = await response.text();
+        const errorMsg = `OpenRouter HTTP ${response.status}: ${text.slice(0, 200)}`;
+        logger.aiProviderError('openrouter', this.openRouterModel, errorMsg, responseTime, userId);
+        throw new Error(errorMsg);
+      }
+
+      const json = await response.json();
+      const content = json?.choices?.[0]?.message?.content;
+      const tokenCount = json?.usage?.total_tokens;
+      
+      if (!content) {
+        logger.aiProviderError('openrouter', this.openRouterModel, 'No content returned', responseTime, userId);
+        throw new Error('OpenRouter returned no content');
+      }
+      
+      logger.aiProviderSuccess('openrouter', this.openRouterModel, responseTime, tokenCount, userId);
+      return content;
+    } catch (error: any) {
+      const responseTime = Date.now() - startTime;
+      logger.aiProviderError('openrouter', this.openRouterModel, error.message, responseTime, userId);
+      throw error;
     }
-
-    const json = await response.json();
-    const content = json?.choices?.[0]?.message?.content;
-    if (!content) {
-      throw new Error('OpenRouter returned no content');
-    }
-    return content;
   }
 
   private isKnownScoutIssue(error: any): boolean {

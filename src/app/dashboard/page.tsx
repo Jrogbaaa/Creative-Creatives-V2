@@ -10,6 +10,7 @@ import { DashboardStats } from '@/components/dashboard/dashboard-stats';
 import { RecentProjects } from '@/components/dashboard/recent-projects';
 import { QuickActions } from '@/components/dashboard/quick-actions';
 import { CreativeExpertChat } from '@/components/creative/creative-expert-chat';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { 
   Plus, 
   MessageSquare, 
@@ -23,6 +24,7 @@ import Link from 'next/link';
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
   const [showChat, setShowChat] = React.useState(false);
+  const [showEmptyProjects, setShowEmptyProjects] = React.useState(false); // For testing empty states
 
   if (!user) {
     return (
@@ -135,7 +137,9 @@ const DashboardPage: React.FC = () => {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="lg:col-span-2"
           >
-            <RecentProjects />
+            <ErrorBoundary>
+              <RecentProjects showEmpty={showEmptyProjects} />
+            </ErrorBoundary>
           </motion.div>
 
           {/* Quick Actions & Tips */}
@@ -179,6 +183,18 @@ const DashboardPage: React.FC = () => {
                     Our AI creative expert can help refine your concepts and suggest improvements.
                   </p>
                 </div>
+                
+                {/* Debug: Toggle empty state */}
+                <div className="mt-4">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setShowEmptyProjects(!showEmptyProjects)}
+                    className="text-xs text-gray-500 hover:text-gray-700"
+                  >
+                    {showEmptyProjects ? '✅ Show Projects' : '🔄 Test Empty State'}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
@@ -187,7 +203,9 @@ const DashboardPage: React.FC = () => {
 
       {/* Creative Expert Chat Modal */}
       {showChat && (
-        <CreativeExpertChat onClose={() => setShowChat(false)} />
+        <ErrorBoundary>
+          <CreativeExpertChat onClose={() => setShowChat(false)} />
+        </ErrorBoundary>
       )}
     </div>
   );

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Test User - Creative Creatives V2</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; text-align: center; margin-bottom: 30px; }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e1e1;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        input:focus {
+            outline: none;
+            border-color: #4F46E5;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        .success { background: #10B981; color: white; }
+        .error { background: #EF4444; color: white; }
+        .credentials {
+            background: #F3F4F6;
+            padding: 20px;
+            border-radius: 6px;
+            margin-top: 20px;
+            border: 2px solid #10B981;
+        }
+        .credentials h3 {
+            color: #10B981;
+            margin-top: 0;
+        }
+        .cred-item {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 5px 0;
+            font-family: monospace;
+            border: 1px solid #D1D5DB;
+        }
+        .test-link {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: #4F46E5;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        .test-link:hover {
+            background: #4338CA;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Create Test User</h1>
+        <p>Create a test account for Creative Creatives V2 authentication testing.</p>
+        
+        <form id="createUserForm">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" value="test@creativecreatives.com" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" value="TestUser123!" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password</label>
+                <input type="password" id="confirmPassword" value="TestUser123!" required>
+            </div>
+            
+            <button type="submit" id="createBtn">Create Test User</button>
+        </form>
+        
+        <div id="result"></div>
+        <div id="credentials" style="display: none;">
+            <h3>✅ Test Credentials Created!</h3>
+            <div class="cred-item">Email: <span id="credEmail"></span></div>
+            <div class="cred-item">Password: <span id="credPassword"></span></div>
+            <a href="http://localhost:3000" class="test-link" target="_blank">
+                🚀 Test Sign In on Main App
+            </a>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, createUserWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // Firebase configuration (from your env)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCN57SiQKUSZ-5vgVLAvdmpI89be0vXWJ4",
+            authDomain: "creative-creatives-v2.firebaseapp.com",
+            projectId: "creative-creatives-v2",
+            storageBucket: "creative-creatives-v2.firebasestorage.app",
+            messagingSenderId: "918663847472",
+            appId: "1:918663847472:web:4b111fa62f950a066717f5",
+            measurementId: "G-YBL8239S34"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Form handling
+        const form = document.getElementById('createUserForm');
+        const resultDiv = document.getElementById('result');
+        const credentialsDiv = document.getElementById('credentials');
+        const createBtn = document.getElementById('createBtn');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            // Validation
+            if (password !== confirmPassword) {
+                showResult('Passwords do not match!', 'error');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showResult('Password must be at least 6 characters long!', 'error');
+                return;
+            }
+            
+            // Show loading
+            createBtn.textContent = 'Creating User...';
+            createBtn.disabled = true;
+            
+            try {
+                // Create user
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                
+                // Sign out immediately (we just want to create the account)
+                await signOut(auth);
+                
+                // Show success
+                showResult('✅ Test user created successfully!', 'success');
+                showCredentials(email, password);
+                
+            } catch (error) {
+                let errorMessage = 'Failed to create user: ' + error.message;
+                
+                // Handle common errors
+                if (error.code === 'auth/email-already-in-use') {
+                    errorMessage = '✅ Account already exists! You can use these credentials to sign in.';
+                    showResult(errorMessage, 'success');
+                    showCredentials(email, password);
+                } else if (error.code === 'auth/weak-password') {
+                    errorMessage = 'Password is too weak. Please use a stronger password.';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMessage = 'Invalid email address format.';
+                }
+                
+                if (error.code !== 'auth/email-already-in-use') {
+                    showResult(errorMessage, 'error');
+                }
+            } finally {
+                createBtn.textContent = 'Create Test User';
+                createBtn.disabled = false;
+            }
+        });
+        
+        function showResult(message, type) {
+            resultDiv.innerHTML = `<div class="result ${type}">${message}</div>`;
+        }
+        
+        function showCredentials(email, password) {
+            document.getElementById('credEmail').textContent = email;
+            document.getElementById('credPassword').textContent = password;
+            credentialsDiv.style.display = 'block';
+        }
+        
+        // Test connection on load
+        console.log('Firebase Auth initialized successfully');
+        console.log('Auth Domain:', firebaseConfig.authDomain);
+    </script>
+</body>
+</html>

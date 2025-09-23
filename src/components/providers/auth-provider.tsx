@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { logger } from '@/lib/logger';
 
 interface AuthContextType {
   user: User | null;
@@ -37,9 +38,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
+    logger.authAttempt('email_password');
+    
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (error) {
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      logger.authSuccess('email_password', result.user.uid);
+    } catch (error: any) {
+      logger.authError('email_password', error.message);
       setLoading(false);
       throw error;
     }
@@ -47,9 +52,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string) => {
     setLoading(true);
+    logger.authAttempt('email_password_signup');
+    
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-    } catch (error) {
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      logger.authSuccess('email_password_signup', result.user.uid);
+    } catch (error: any) {
+      logger.authError('email_password_signup', error.message);
       setLoading(false);
       throw error;
     }
@@ -57,9 +66,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     setLoading(true);
+    const currentUserId = user?.uid;
+    logger.authAttempt('sign_out', currentUserId);
+    
     try {
       await signOut(auth);
-    } catch (error) {
+      logger.authSuccess('sign_out', currentUserId || 'unknown');
+    } catch (error: any) {
+      logger.authError('sign_out', error.message, currentUserId);
       setLoading(false);
       throw error;
     }

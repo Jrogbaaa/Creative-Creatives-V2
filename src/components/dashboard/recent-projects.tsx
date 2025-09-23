@@ -12,13 +12,20 @@ import {
   MoreHorizontal,
   Clock,
   Eye,
-  Heart
+  Heart,
+  Plus,
+  FileVideo,
+  Sparkles
 } from 'lucide-react';
 import Link from 'next/link';
 
-export const RecentProjects: React.FC = () => {
+interface RecentProjectsProps {
+  showEmpty?: boolean; // For testing empty states
+}
+
+export const RecentProjects: React.FC<RecentProjectsProps> = ({ showEmpty = false }) => {
   // Mock data - in a real app, this would come from an API
-  const projects = [
+  const projects = showEmpty ? [] : [
     {
       id: '1',
       title: 'Summer Fashion Campaign',
@@ -83,6 +90,32 @@ export const RecentProjects: React.FC = () => {
     }
   };
 
+  const EmptyState = () => (
+    <div className="text-center py-12">
+      <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center">
+        <FileVideo className="w-8 h-8 text-purple-600" />
+      </div>
+      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+        No projects yet
+      </h3>
+      <p className="text-gray-600 mb-6 max-w-sm mx-auto">
+        Create your first AI-powered advertisement to get started. Our creative expert Marcus will help guide you!
+      </p>
+      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <Link href="/create">
+          <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+            <Plus className="w-4 h-4 mr-2" />
+            Create Your First Ad
+          </Button>
+        </Link>
+        <Button variant="outline" onClick={() => {/* This would open the Marcus chat */}}>
+          <Sparkles className="w-4 h-4 mr-2" />
+          Chat with Marcus
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <Card>
       <CardHeader>
@@ -90,19 +123,27 @@ export const RecentProjects: React.FC = () => {
           <div>
             <CardTitle>Recent Projects</CardTitle>
             <CardDescription>
-              Your latest advertisement projects
+              {projects.length === 0 
+                ? "Your advertisement projects will appear here" 
+                : "Your latest advertisement projects"
+              }
             </CardDescription>
           </div>
-          <Link href="/projects">
-            <Button variant="outline" size="sm">
-              View All
-            </Button>
-          </Link>
+          {projects.length > 0 && (
+            <Link href="/projects">
+              <Button variant="outline" size="sm">
+                View All
+              </Button>
+            </Link>
+          )}
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {projects.map((project, index) => (
+        {projects.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <div className="space-y-4">
+            {projects.map((project, index) => (
             <motion.div
               key={project.id}
               initial={{ opacity: 0, x: -20 }}
@@ -181,8 +222,9 @@ export const RecentProjects: React.FC = () => {
                 </Button>
               </div>
             </motion.div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

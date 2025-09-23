@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/components/providers/auth-provider';
 import { ToastProvider } from '@/components/providers/toast-provider';
+import { OfflineBanner } from '@/components/ui/offline-banner';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -28,6 +29,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <AuthProvider>
           <ToastProvider>
+            <OfflineBanner />
             <main className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
               {children}
             </main>
