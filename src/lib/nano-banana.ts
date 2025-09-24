@@ -1,4 +1,5 @@
 import { NanoBananaGenerationRequest, NanoBananaResponse } from '@/types';
+import { withCache } from './ai-cache';
 
 /**
  * Nano Banana (Gemini 2.5 Flash Image) Service
@@ -21,13 +22,14 @@ class NanaBananaService {
    * Generate images using text-to-image (Nano Banana)
    */
   async generateImage(request: NanoBananaGenerationRequest): Promise<NanoBananaResponse> {
-    try {
-      console.log('🍌 [Nano Banana] Starting image generation...');
-      console.log('📝 Request:', JSON.stringify(request, null, 2));
+    return withCache.image(request.prompt, request, async () => {
+      try {
+        console.log('🍌 [Nano Banana] Starting image generation...');
+        console.log('📝 Request:', JSON.stringify(request, null, 2));
 
-      if (!this.apiKey) {
-        throw new Error('GEMINI_API_KEY is not configured');
-      }
+        if (!this.apiKey) {
+          throw new Error('GEMINI_API_KEY is not configured');
+        }
 
       // Prepare the content array
       const contents = [{
@@ -118,6 +120,7 @@ class NanaBananaService {
         error: error instanceof Error ? error.message : 'Unknown error occurred'
       };
     }
+    });
   }
 
   /**

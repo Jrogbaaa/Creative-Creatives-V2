@@ -1,10 +1,10 @@
 import { 
   StoryboardPlan, 
   StoryboardScene, 
-  MarcusStoryboardRequest, 
-  BrandInfo 
+  MarcusStoryboardRequest 
 } from '@/types';
 import { callMarcusLLM } from '@/lib/marcus-llm';
+import { withCache } from '@/lib/ai-cache';
 
 /**
  * Marcus Storyboard Planning Service
@@ -16,16 +16,22 @@ class MarcusStoryboardService {
    * Generate a complete storyboard plan based on brand info and chat context
    */
   async generateStoryboardPlan(request: MarcusStoryboardRequest): Promise<StoryboardPlan> {
+    return withCache.storyboard(request, async () => {
     try {
       console.log('🎬 [Marcus] Generating storyboard plan...');
       
       // Enhanced Marcus prompt for storyboard planning
       const storyboardPrompt = this.createStoryboardPrompt(request);
       
-      // Call Marcus directly through the LLM service
-      const marcusResponse = await callMarcusLLM([
-        { role: 'user', content: storyboardPrompt }
-      ], {
+        // Call Marcus directly through the LLM service
+        const marcusResponse = await callMarcusLLM([
+          { 
+            id: `msg_${Date.now()}`,
+            role: 'user', 
+            content: storyboardPrompt,
+            timestamp: new Date()
+          }
+        ], {
         brand: request.brandInfo,
         currentGoal: 'storyboard_planning',
         extractedInfo: {
@@ -49,6 +55,7 @@ class MarcusStoryboardService {
       console.error('❌ [Marcus] Storyboard planning error:', error);
       throw error;
     }
+    });
   }
 
   /**
@@ -131,53 +138,69 @@ Respond in this exact JSON format:
       
       let parsedResponse: any = null;
       
-      // Method 1: Try to find JSON code block
-      const codeBlockMatch = response.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-      if (codeBlockMatch) {
-        console.log('✅ [Marcus] Found JSON in code block');
-        parsedResponse = JSON.parse(codeBlockMatch[1]);
+      // Enhanced Method 1: Try to find JSON code block with multiple patterns
+      const codeBlockPatterns = [
+        /```(?:json)?\s*(\{[\s\S]*?\})\s*```/,
+        /```(?:json)?\s*([\s\S]*?)\s*```/,
+        /```\s*(\{[\s\S]*?\})\s*```/
+      ];
+      
+      for (const pattern of codeBlockPatterns) {
+        const match = response.match(pattern);
+        if (match) {
+          try {
+            const jsonStr = match[1].trim();
+            // Clean up any markdown or extra text
+            const cleanedJson = this.cleanJsonString(jsonStr);
+            parsedResponse = JSON.parse(cleanedJson);
+            if (this.validateStoryboardStructure(parsedResponse)) {
+              console.log('✅ [Marcus] Found valid JSON in code block');
+              break;
+            }
+          } catch (e) {
+            console.log('⚠️ [Marcus] Code block JSON parse failed, trying next pattern');
+            continue;
+          }
+        }
       }
       
-      // Method 2: Try to find standalone JSON object
+      // Enhanced Method 2: Try to find nested JSON objects with better regex
       if (!parsedResponse) {
-        const jsonMatches = response.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g);
+        const nestedJsonRegex = /\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\}/g;
+        const jsonMatches = response.match(nestedJsonRegex);
+        
         if (jsonMatches) {
           console.log(`🔍 [Marcus] Found ${jsonMatches.length} potential JSON objects`);
           
-          // Try each JSON match until one parses successfully
-          for (const jsonMatch of jsonMatches) {
+          // Sort by length (longer is likely more complete)
+          const sortedMatches = jsonMatches.sort((a, b) => b.length - a.length);
+          
+          for (const jsonMatch of sortedMatches) {
             try {
-              const testParse = JSON.parse(jsonMatch);
-              if (testParse.scenes && Array.isArray(testParse.scenes)) {
+              const cleanedJson = this.cleanJsonString(jsonMatch);
+              const testParse = JSON.parse(cleanedJson);
+              if (this.validateStoryboardStructure(testParse)) {
                 console.log('✅ [Marcus] Found valid storyboard JSON');
                 parsedResponse = testParse;
                 break;
               }
             } catch (e) {
-              console.log('⚠️ [Marcus] JSON candidate failed parse');
               continue;
             }
           }
         }
       }
       
-      // Method 3: Try to extract JSON from the entire response
+      // Enhanced Method 3: Try line-by-line JSON reconstruction
       if (!parsedResponse) {
-        const fullJsonMatch = response.match(/\{[\s\S]*\}/);
-        if (fullJsonMatch) {
-          try {
-            console.log('🔍 [Marcus] Trying full response JSON extraction');
-            parsedResponse = JSON.parse(fullJsonMatch[0]);
-          } catch (e) {
-            console.log('⚠️ [Marcus] Full response JSON parse failed');
-          }
-        }
+        console.log('🔄 [Marcus] Attempting line-by-line JSON reconstruction');
+        parsedResponse = this.reconstructJsonFromResponse(response);
       }
       
-      // If no JSON found, create fallback structure
-      if (!parsedResponse) {
-        console.log('🚨 [Marcus] No valid JSON found, creating fallback storyboard');
-        parsedResponse = this.createFallbackStoryboard(request, response);
+      // Method 4: Extract key information and create structured response
+      if (!parsedResponse || !this.validateStoryboardStructure(parsedResponse)) {
+        console.log('🚨 [Marcus] Creating intelligent fallback from response content');
+        parsedResponse = this.createIntelligentFallback(request, response);
       }
       
       // Convert to StoryboardPlan format
@@ -215,7 +238,215 @@ Respond in this exact JSON format:
   }
 
   /**
-   * Create a fallback storyboard when JSON parsing fails
+   * Clean JSON string by removing common formatting issues
+   */
+  private cleanJsonString(jsonStr: string): string {
+    return jsonStr
+      .replace(/^[^{]*/, '') // Remove text before first {
+      .replace(/[^}]*$/, '') // Remove text after last }
+      .replace(/,\s*}/g, '}') // Remove trailing commas
+      .replace(/,\s*]/g, ']') // Remove trailing commas in arrays
+      .replace(/\n\s*/g, ' ') // Replace newlines with spaces
+      .trim();
+  }
+
+  /**
+   * Validate storyboard structure
+   */
+  private validateStoryboardStructure(obj: any): boolean {
+    return obj && 
+           typeof obj === 'object' &&
+           obj.scenes && 
+           Array.isArray(obj.scenes) && 
+           obj.scenes.length > 0 &&
+           obj.narrative &&
+           typeof obj.narrative === 'object';
+  }
+
+  /**
+   * Attempt to reconstruct JSON from response by finding key sections
+   */
+  private reconstructJsonFromResponse(response: string): any | null {
+    try {
+      // Look for key storyboard elements in the response
+      const sceneMatches = response.match(/"scenes"\s*:\s*\[[\s\S]*?\]/i);
+      const narrativeMatches = response.match(/"narrative"\s*:\s*\{[\s\S]*?\}/i);
+      const visualMatches = response.match(/"visualConsistency"\s*:\s*\{[\s\S]*?\}/i);
+      
+      if (sceneMatches) {
+        let reconstructed = '{';
+        
+        if (narrativeMatches) {
+          reconstructed += '"narrative":' + narrativeMatches[0].split(':').slice(1).join(':').trim() + ',';
+        }
+        
+        reconstructed += '"scenes":' + sceneMatches[0].split(':').slice(1).join(':').trim();
+        
+        if (visualMatches) {
+          reconstructed += ',"visualConsistency":' + visualMatches[0].split(':').slice(1).join(':').trim();
+        }
+        
+        reconstructed += '}';
+        
+        // Clean and parse
+        const cleaned = this.cleanJsonString(reconstructed);
+        return JSON.parse(cleaned);
+      }
+    } catch (e) {
+      console.log('⚠️ [Marcus] JSON reconstruction failed');
+    }
+    return null;
+  }
+
+  /**
+   * Create intelligent fallback by parsing response content
+   */
+  private createIntelligentFallback(request: MarcusStoryboardRequest, response: string): any {
+    console.log('🧠 [Marcus] Creating intelligent fallback from response analysis');
+    
+    // Extract any scene information from the response
+    const scenes = this.extractScenesFromText(response, request);
+    const narrative = this.extractNarrativeFromText(response, request);
+    
+    return {
+      scenes,
+      narrative,
+      visualConsistency: {
+        characters: [`Professional representing ${request.brandInfo.targetAudience}`],
+        colorPalette: request.brandInfo.colorPalette || ["#3B82F6", "#F8FAFC"],
+        style: `${request.brandInfo.brandVoice} commercial style`
+      }
+    };
+  }
+
+  /**
+   * Extract scene information from free text
+   */
+  private extractScenesFromText(text: string, request: MarcusStoryboardRequest): any[] {
+    const sceneKeywords = ['scene', 'shot', 'opening', 'hook', 'solution', 'call to action', 'cta'];
+    const lines = text.split('\n').filter(line => line.trim().length > 0);
+    
+    const scenes = [];
+    let currentScene = null;
+    
+    for (const line of lines) {
+      const lowerLine = line.toLowerCase();
+      
+      // Check if this line might be starting a new scene
+      if (sceneKeywords.some(keyword => lowerLine.includes(keyword))) {
+        if (currentScene) {
+          scenes.push(currentScene);
+        }
+        
+        currentScene = {
+          sceneNumber: scenes.length + 1,
+          title: this.extractSceneTitle(line),
+          description: line.trim(),
+          duration: Math.floor(request.targetDuration / 3), // Default split
+          prompt: this.generatePromptFromDescription(line, request.brandInfo),
+          visualStyle: {
+            lighting: "natural",
+            mood: "professional",
+            cameraAngle: "medium",
+            composition: "balanced"
+          }
+        };
+      } else if (currentScene && line.trim().length > 20) {
+        // Add to current scene description
+        currentScene.description += ' ' + line.trim();
+      }
+    }
+    
+    if (currentScene) {
+      scenes.push(currentScene);
+    }
+    
+    // If no scenes extracted, create default structure
+    if (scenes.length === 0) {
+      return this.createDefaultScenes(request);
+    }
+    
+    return scenes;
+  }
+
+  /**
+   * Extract narrative structure from text
+   */
+  private extractNarrativeFromText(text: string, request: MarcusStoryboardRequest): any {
+    return {
+      hook: this.extractByKeywords(text, ['hook', 'opening', 'attention']) || `Engage ${request.brandInfo.targetAudience}`,
+      problem: this.extractByKeywords(text, ['problem', 'challenge', 'pain']) || undefined,
+      solution: this.extractByKeywords(text, ['solution', 'benefit']) || `${request.brandInfo.name} provides the solution`,
+      callToAction: this.extractByKeywords(text, ['cta', 'call to action', 'action']) || `Choose ${request.brandInfo.name} today`
+    };
+  }
+
+  /**
+   * Extract content by keywords
+   */
+  private extractByKeywords(text: string, keywords: string[]): string | null {
+    for (const keyword of keywords) {
+      const regex = new RegExp(`${keyword}[^.!?]*[.!?]`, 'i');
+      const match = text.match(regex);
+      if (match) {
+        return match[0].trim();
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Extract scene title from line
+   */
+  private extractSceneTitle(line: string): string {
+    const cleaned = line.replace(/^[^a-zA-Z]*/, '').trim();
+    const firstSentence = cleaned.split('.')[0];
+    return firstSentence.length > 50 ? firstSentence.substring(0, 47) + '...' : firstSentence;
+  }
+
+  /**
+   * Generate prompt from description
+   */
+  private generatePromptFromDescription(description: string, brandInfo: any): string {
+    return `Professional ${brandInfo.industry} advertisement scene: ${description}. ${brandInfo.brandVoice} tone, high-quality commercial photography.`;
+  }
+
+  /**
+   * Create default scenes when extraction fails
+   */
+  private createDefaultScenes(request: MarcusStoryboardRequest): any[] {
+    const sceneDuration = Math.floor(request.targetDuration / 3);
+    
+    return [
+      {
+        sceneNumber: 1,
+        title: "Hook",
+        description: "Attention-grabbing opening",
+        duration: sceneDuration,
+        prompt: `Professional opening scene for ${request.brandInfo.name}, ${request.brandInfo.brandVoice} style`,
+        visualStyle: { lighting: "natural", mood: "engaging", cameraAngle: "medium", composition: "centered" }
+      },
+      {
+        sceneNumber: 2,
+        title: "Solution", 
+        description: "Brand solution presentation",
+        duration: sceneDuration,
+        prompt: `${request.brandInfo.name} solution showcase, professional ${request.brandInfo.industry} setting`,
+        visualStyle: { lighting: "bright", mood: "confident", cameraAngle: "close-up", composition: "rule-of-thirds" }
+      },
+      {
+        sceneNumber: 3,
+        title: "Call to Action",
+        description: "Final call to action", 
+        duration: sceneDuration,
+        prompt: `Call-to-action for ${request.brandInfo.name}, inspiring conclusion`,
+        visualStyle: { lighting: "warm", mood: "inspiring", cameraAngle: "wide-shot", composition: "dynamic" }
+      }
+    ];
+  }
+
+  /**
+   * Create a fallback storyboard when JSON parsing fails (legacy method)
    */
   private createFallbackStoryboard(request: MarcusStoryboardRequest, response: string) {
     console.log('🛠️ [Marcus] Creating fallback storyboard structure');
@@ -268,6 +499,9 @@ Respond in this exact JSON format:
     ];
 
     return {
+      id: `storyboard_fallback_${Date.now()}`,
+      projectId: 'temp',
+      totalDuration: fallbackScenes.reduce((total, scene) => total + scene.duration, 0),
       scenes: fallbackScenes,
       visualConsistency: {
         characters: ["professional business person", "diverse team members"],
@@ -279,7 +513,9 @@ Respond in this exact JSON format:
         problem: "Current processes are inefficient and time-consuming",
         solution: `${brandName} automates and streamlines your workflow`,
         callToAction: `Transform your productivity with ${brandName} today`
-      }
+      },
+      createdBy: 'marcus',
+      createdAt: new Date()
     };
   }
 

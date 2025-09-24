@@ -1,11 +1,14 @@
 interface LogEvent {
   timestamp: string;
   level: 'info' | 'warn' | 'error' | 'debug';
-  category: 'ai_provider' | 'auth' | 'ui' | 'performance';
+  category: 'ai_provider' | 'auth' | 'ui' | 'performance' | 'business' | 'security';
   event: string;
   data?: Record<string, any>;
   userId?: string;
   sessionId?: string;
+  userAgent?: string;
+  url?: string;
+  referrer?: string;
 }
 
 class Logger {
@@ -44,17 +47,85 @@ class Logger {
   }
 
   private sendToLoggingService(logEvent: LogEvent): void {
-    // Placeholder for production logging service integration
-    // Examples: Vercel Analytics, Sentry, LogRocket, etc.
+    // Send to multiple logging services in production
     try {
-      // Example: Send to your analytics endpoint
-      // fetch('/api/analytics/log', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(logEvent),
-      // }).catch(console.error);
+      // 1. Send to internal analytics API
+      this.sendToInternalAPI(logEvent).catch(console.error);
+      
+      // 2. Send to Vercel Analytics (if available)
+      this.sendToVercelAnalytics(logEvent).catch(console.error);
+      
+      // 3. Send to Sentry (for errors)
+      if (logEvent.level === 'error') {
+        this.sendToSentry(logEvent).catch(console.error);
+      }
+      
+      // 4. Send to PostHog (for user analytics)
+      if (logEvent.category === 'ui' || logEvent.category === 'auth') {
+        this.sendToPostHog(logEvent).catch(console.error);
+      }
+      
     } catch (error) {
-      console.error('Failed to send log to service:', error);
+      console.error('Failed to send log to services:', error);
+    }
+  }
+
+  private async sendToInternalAPI(logEvent: LogEvent): Promise<void> {
+    if (!process.env.NEXT_PUBLIC_ENABLE_ANALYTICS) return;
+    
+    await fetch('/api/analytics/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(logEvent),
+    });
+  }
+
+  private async sendToVercelAnalytics(logEvent: LogEvent): Promise<void> {
+    // Check if Vercel Analytics is available
+    if (typeof window !== 'undefined' && (window as any).va) {
+      (window as any).va('track', `${logEvent.category}_${logEvent.event}`, {
+        level: logEvent.level,
+        sessionId: logEvent.sessionId,
+        ...logEvent.data
+      });
+    }
+  }
+
+  private async sendToSentry(logEvent: LogEvent): Promise<void> {
+    // Check if Sentry is available
+    if (typeof window !== 'undefined' && (window as any).Sentry) {
+      const Sentry = (window as any).Sentry;
+      
+      if (logEvent.level === 'error') {
+        Sentry.captureException(new Error(logEvent.event), {
+          tags: {
+            category: logEvent.category,
+            sessionId: logEvent.sessionId,
+          },
+          extra: logEvent.data
+        });
+      } else {
+        Sentry.addBreadcrumb({
+          message: logEvent.event,
+          category: logEvent.category,
+          level: logEvent.level as any,
+          data: logEvent.data
+        });
+      }
+    }
+  }
+
+  private async sendToPostHog(logEvent: LogEvent): Promise<void> {
+    // Check if PostHog is available
+    if (typeof window !== 'undefined' && (window as any).posthog) {
+      const posthog = (window as any).posthog;
+      
+      posthog.capture(`${logEvent.category}_${logEvent.event}`, {
+        level: logEvent.level,
+        sessionId: logEvent.sessionId,
+        userId: logEvent.userId,
+        ...logEvent.data
+      });
     }
   }
 
@@ -183,4 +254,67 @@ export const getUserId = (): string | undefined => {
     }
   }
   return undefined;
+};
+
+// Enhanced logging with automatic user context
+export const logWithContext = (category: LogEvent['category'], event: string, data?: Record<string, any>) => {
+  const userId = getUserId();
+  logger.info(category, event, data, userId);
+};
+
+// Performance monitoring helper
+export const measurePerformance = (name: string, fn: () => Promise<any>) => {
+  return async (...args: any[]) => {
+    const startTime = performance.now();
+    try {
+      const result = await fn.apply(null, args);
+      const duration = performance.now() - startTime;
+      logger.performanceMetric(name, duration, 'ms', { success: true });
+      return result;
+    } catch (error) {
+      const duration = performance.now() - startTime;
+      logger.performanceMetric(name, duration, 'ms', { success: false, error: (error as Error).message });
+      throw error;
+    }
+  };
+};
+
+// AI Provider performance tracking
+export const trackAIProviderCall = async (
+  provider: string, 
+  model: string, 
+  operation: () => Promise<any>
+): Promise<any> => {
+  const startTime = Date.now();
+  const userId = getUserId();
+  
+  logger.aiProviderAttempt(provider, model, userId);
+  
+  try {
+    const result = await operation();
+    const responseTime = Date.now() - startTime;
+    logger.aiProviderSuccess(provider, model, responseTime, undefined, userId);
+    return result;
+  } catch (error) {
+    const responseTime = Date.now() - startTime;
+    logger.aiProviderError(provider, model, (error as Error).message, responseTime, userId);
+    throw error;
+  }
+};
+
+// Error boundary integration
+export const reportErrorToServices = (error: Error, errorInfo?: any) => {
+  const userId = getUserId();
+  logger.errorBoundary(errorInfo?.componentStack || '', error, userId);
+  
+  // Additional error reporting to external services
+  if (typeof window !== 'undefined') {
+    // Report to Sentry if available
+    if ((window as any).Sentry) {
+      (window as any).Sentry.captureException(error, {
+        user: { id: userId },
+        extra: errorInfo
+      });
+    }
+  }
 };

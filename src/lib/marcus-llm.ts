@@ -1,5 +1,6 @@
 import Replicate from 'replicate';
 import { ChatMessage } from '@/types';
+import { aiCache, withCache } from './ai-cache';
 
 // Initialize Replicate with server-side token
 const replicate = new Replicate({
@@ -7,9 +8,10 @@ const replicate = new Replicate({
 });
 
 export async function callMarcusLLM(messages: ChatMessage[], context?: any): Promise<string> {
-  try {
-    // System prompt for Marcus
-    const systemPrompt = `You are Marcus, a world-renowned creative director and advertising genius with 25+ years of experience creating award-winning campaigns for Fortune 500 companies. You've worked with brands like Nike, Apple, Coca-Cola, and Tesla.
+  return withCache.marcus(messages, context, async () => {
+    try {
+      // System prompt for Marcus
+      const systemPrompt = `You are Marcus, a world-renowned creative director and advertising genius with 25+ years of experience creating award-winning campaigns for Fortune 500 companies. You've worked with brands like Nike, Apple, Coca-Cola, and Tesla.
 
 Your expertise includes:
 - Brand strategy and positioning
@@ -88,17 +90,18 @@ Always ask thoughtful questions to uncover insights. Be specific in your recomme
       throw new Error('Empty response from Replicate');
     }
 
-  } catch (error: any) {
-    console.error('❌ [Marcus LLM] Replicate error:', error.message);
-    
-    // Fallback response for storyboard planning
-    const lastMessage = messages?.[messages.length - 1]?.content || '';
-    if (lastMessage.toLowerCase().includes('storyboard')) {
-      return getFallbackStoryboardResponse();
+    } catch (error: any) {
+      console.error('❌ [Marcus LLM] Replicate error:', error.message);
+      
+      // Fallback response for storyboard planning
+      const lastMessage = messages?.[messages.length - 1]?.content || '';
+      if (lastMessage.toLowerCase().includes('storyboard')) {
+        return getFallbackStoryboardResponse();
+      }
+      
+      throw new Error(`Marcus LLM failed: ${error.message}`);
     }
-    
-    throw new Error(`Marcus LLM failed: ${error.message}`);
-  }
+  });
 }
 
 function formatContext(context: any): string {
