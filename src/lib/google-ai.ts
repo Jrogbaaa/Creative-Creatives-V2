@@ -8,6 +8,14 @@ class GoogleAIService {
 
   constructor() {
     this.projectId = process.env.GOOGLE_CLOUD_PROJECT_ID || 'creative-creatives-v2';
+    
+    // Validate environment variables
+    if (!process.env.GOOGLE_CLOUD_CLIENT_EMAIL || !process.env.GOOGLE_CLOUD_PRIVATE_KEY) {
+      console.error('Google Cloud credentials missing. Check environment variables.');
+    } else {
+      console.log(`Google Cloud initialized for project: ${this.projectId}`);
+    }
+    
     this.auth = new GoogleAuth({
       credentials: {
         client_email: process.env.GOOGLE_CLOUD_CLIENT_EMAIL,
@@ -18,17 +26,28 @@ class GoogleAIService {
   }
 
   private async getAccessToken(): Promise<string> {
+    console.log('🔑 Getting Google Cloud access token...');
     const client = await this.auth.getClient();
     const accessToken = await client.getAccessToken();
+    console.log('✅ Access token retrieved successfully');
     return accessToken.token || '';
   }
 
   async generateVideo(request: VeoGenerationRequest): Promise<{ jobId: string }> {
     try {
+      console.log('🎬 Starting VEO 3 video generation (with updated permissions)...');
+      console.log('📋 Request:', JSON.stringify(request, null, 2));
+      
       const accessToken = await this.getAccessToken();
       
+      const apiUrl = `https://us-central1-aiplatform.googleapis.com/v1/projects/${this.projectId}/locations/us-central1/publishers/google/models/veo-3.0-generate-preview:predict`;
+      console.log('🌐 Making request to:', apiUrl);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes timeout
+      
       const response = await fetch(
-        `https://us-central1-aiplatform.googleapis.com/v1/projects/${this.projectId}/locations/us-central1/publishers/google/models/veo-001:predict`,
+        apiUrl,
         {
           method: 'POST',
           headers: {
@@ -37,24 +56,47 @@ class GoogleAIService {
           },
           body: JSON.stringify({
             instances: [{
-              prompt: request.prompt,
-              config: {
-                aspectRatio: request.aspectRatio,
-                durationSeconds: request.duration
-              }
+              prompt: request.prompt
             }],
             parameters: {
-              sampleCount: 1
+              sampleCount: 1,
+              resolution: "720p" // Based on VEO 3 documentation
             }
           }),
+          signal: controller.signal
         }
       );
+      
+      clearTimeout(timeoutId);
+      console.log('📞 Response received:', response.status, response.statusText);
 
       if (!response.ok) {
-        throw new Error(`Veo API error: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('VEO API Error Details:');
+        console.error('- Status:', response.status);
+        console.error('- Status Text:', response.statusText);
+        console.error('- Response Body:', errorText);
+        console.error('- Request URL:', `https://us-central1-aiplatform.googleapis.com/v1/projects/${this.projectId}/locations/us-central1/publishers/google/models/veo-3.0-generate-preview:predict`);
+        console.error('- Project ID:', this.projectId);
+        
+        if (response.status === 401) {
+          throw new Error(`Authentication failed: ${response.statusText}. Check your Google Cloud credentials.`);
+        }
+        
+        if (response.status === 403) {
+          throw new Error(`VEO 3 Preview Access Required: VEO 3 is in controlled preview and requires allowlist access. Apply at Google Cloud Console > Vertex AI > VEO 3 Preview. Your project needs explicit approval to use VEO 3.`);
+        }
+        
+        if (response.status === 404) {
+          throw new Error(`VEO 3 model not found: ${response.statusText}. VEO 3 might not be available in us-central1 region for your project.`);
+        }
+        
+        throw new Error(`VEO API error (${response.status}): ${response.statusText} - ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('📄 Response data:', JSON.stringify(data, null, 2));
+      console.log('✅ VEO job started successfully! Job ID:', data.name);
       return { jobId: data.name }; // Returns operation name as job ID
     } catch (error) {
       console.error('Video generation error:', error);
@@ -212,14 +254,16 @@ class GoogleAIService {
     }
   }
 
-  // Helper method to create optimized prompts for different use cases
+  // Helper method to create optimized prompts for VEO 3 video generation
+  // VEO 3 responds well to detailed, specific prompts with visual and technical specifications
   createAdVideoPrompt(concept: string, brand: any, scene: any): string {
     const basePrompt = `Create a professional ${scene.duration}-second advertisement video for ${brand.name}. `;
     const conceptPrompt = `${concept}. `;
     const stylePrompt = `Use ${brand.brandVoice} tone, incorporate brand colors: ${brand.colorPalette?.join(', ')}. `;
-    const technicalPrompt = `High-quality commercial production, professional lighting, crisp focus, smooth camera movement.`;
+    const technicalPrompt = `High-quality commercial production, professional lighting, crisp focus, smooth camera movement, 4K resolution, cinematic composition.`;
+    const veo3Optimizations = ` Shot with dynamic camera angles, perfect color grading, engaging visual storytelling.`;
     
-    return basePrompt + conceptPrompt + stylePrompt + technicalPrompt;
+    return basePrompt + conceptPrompt + stylePrompt + technicalPrompt + veo3Optimizations;
   }
 
   createAdImagePrompt(description: string, brand: any): string {
