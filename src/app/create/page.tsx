@@ -24,10 +24,25 @@ import {
   CheckCircle,
   Loader2,
   Video,
-  Wand2
+  Wand2,
+  Image as ImageIcon,
+  RefreshCw,
+  Trash2,
+  Edit3,
+  Eye,
+  ThumbsUp,
+  ThumbsDown
 } from 'lucide-react';
 import Link from 'next/link';
-import { VeoGenerationRequest } from '@/types';
+import { 
+  VeoGenerationRequest, 
+  NanoBananaGenerationRequest, 
+  ImageAsset, 
+  StoryboardPlan,
+  StoryboardScene,
+  MarcusStoryboardRequest,
+  ChatMessage
+} from '@/types';
 
 interface BrandInfo {
   name: string;
@@ -54,6 +69,15 @@ interface GenerationStatus {
   error?: string;
 }
 
+interface StoryboardState {
+  plan: StoryboardPlan | null;
+  isGeneratingPlan: boolean;
+  isGeneratingImages: boolean;
+  currentGeneratingScene: number | null;
+  chatMessages: ChatMessage[];
+  planGenerated: boolean;
+}
+
 const CreateAdPage: React.FC = () => {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
@@ -77,10 +101,20 @@ const CreateAdPage: React.FC = () => {
     message: 'Ready to create your video ad'
   });
 
+  const [storyboard, setStoryboard] = useState<StoryboardState>({
+    plan: null,
+    isGeneratingPlan: false,
+    isGeneratingImages: false,
+    currentGeneratingScene: null,
+    chatMessages: [],
+    planGenerated: false
+  });
+
   const steps = [
     { number: 1, title: 'Brand Info', icon: <Target className="w-5 h-5" /> },
-    { number: 2, title: 'Video Concept', icon: <Wand2 className="w-5 h-5" /> },
-    { number: 3, title: 'Generate', icon: <Sparkles className="w-5 h-5" /> }
+    { number: 2, title: 'Marcus Chat & Plan', icon: <Wand2 className="w-5 h-5" /> },
+    { number:3, title: 'Storyboard Selection', icon: <ImageIcon className="w-5 h-5" /> },
+    { number: 4, title: 'Generate Video', icon: <Sparkles className="w-5 h-5" /> }
   ];
 
   const aspectRatios = [
@@ -102,7 +136,7 @@ const CreateAdPage: React.FC = () => {
   ] as const;
 
   const handleNextStep = () => {
-    if (currentStep < 3) {
+    if (currentStep < steps.length) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -113,16 +147,236 @@ const CreateAdPage: React.FC = () => {
     }
   };
 
+  // Marcus Storyboard functions
+  const handleGenerateStoryboard = async (chatMessages: ChatMessage[], adGoals: string[]) => {
+    try {
+      setStoryboard(prev => ({ ...prev, isGeneratingPlan: true }));
+      
+      const storyboardRequest: MarcusStoryboardRequest = {
+        brandInfo,
+        chatContext: chatMessages.map(msg => `${msg.role}: ${msg.content}`),
+        adGoals,
+        targetDuration: videoConfig.duration
+      };
+
+      const response = await fetch('/api/generate-storyboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(storyboardRequest),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.storyboard) {
+        setStoryboard(prev => ({
+          ...prev,
+          plan: data.storyboard,
+          isGeneratingPlan: false,
+          planGenerated: true
+        }));
+      } else {
+        throw new Error(data.error || 'Failed to generate storyboard');
+      }
+
+    } catch (error) {
+      console.error('Storyboard generation error:', error);
+      setStoryboard(prev => ({ ...prev, isGeneratingPlan: false }));
+    }
+  };
+
+  const handleGenerateSceneImages = async (sceneId: string) => {
+    try {
+      const scene = storyboard.plan?.scenes.find(s => s.id === sceneId);
+      if (!scene) return;
+
+      setStoryboard(prev => ({ 
+        ...prev, 
+        isGeneratingImages: true,
+        currentGeneratingScene: scene.sceneNumber
+      }));
+
+      // Generate 3 image options for this scene
+      const promises = Array.from({ length: 3 }, async (_, index) => {
+        const imageRequest: NanoBananaGenerationRequest = {
+          prompt: `${scene.prompt}. Professional commercial photography, ${scene.visualStyle.lighting} lighting, ${scene.visualStyle.mood} mood, ${scene.visualStyle.cameraAngle} shot, ${scene.visualStyle.composition} composition. Consistent with ${storyboard.plan?.visualConsistency.style}.`
+        };
+
+        const response = await fetch('/api/generate-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(imageRequest),
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.images?.[0]) {
+          const imageAsset: ImageAsset = {
+            id: `${sceneId}_option_${index}_${Date.now()}`,
+            projectId: 'temp',
+            url: `data:${data.images[0].mimeType};base64,${data.images[0].data}`,
+            prompt: scene.prompt,
+            approved: false,
+            generatedBy: 'nano-banana',
+            metadata: { aspectRatio: videoConfig.aspectRatio, editHistory: [] },
+            createdAt: new Date()
+          };
+          return imageAsset;
+        }
+        return null;
+      });
+
+      const generatedImages = (await Promise.all(promises)).filter(Boolean) as ImageAsset[];
+
+      // Update the scene with generated images
+      setStoryboard(prev => ({
+        ...prev,
+        plan: prev.plan ? {
+          ...prev.plan,
+          scenes: prev.plan.scenes.map(s => 
+            s.id === sceneId 
+              ? { ...s, generatedImages } 
+              : s
+          )
+        } : null,
+        isGeneratingImages: false,
+        currentGeneratingScene: null
+      }));
+
+    } catch (error) {
+      console.error('Scene image generation error:', error);
+      setStoryboard(prev => ({ 
+        ...prev, 
+        isGeneratingImages: false, 
+        currentGeneratingScene: null 
+      }));
+    }
+  };
+
+  const handleSelectSceneImage = (sceneId: string, imageId: string) => {
+    setStoryboard(prev => ({
+      ...prev,
+      plan: prev.plan ? {
+        ...prev.plan,
+        scenes: prev.plan.scenes.map(scene => 
+          scene.id === sceneId 
+            ? { 
+                ...scene, 
+                selectedImageId: imageId,
+                generatedImages: scene.generatedImages.map(img => ({
+                  ...img,
+                  approved: img.id === imageId
+                }))
+              }
+            : scene
+        )
+      } : null
+    }));
+  };
+
+  const handleEditSceneImage = async (sceneId: string, imageId: string, editPrompt: string) => {
+    try {
+      const scene = storyboard.plan?.scenes.find(s => s.id === sceneId);
+      const imageToEdit = scene?.generatedImages.find(img => img.id === imageId);
+      if (!imageToEdit) return;
+
+      // Extract base64 data from data URL
+      const base64Data = imageToEdit.url.split(',')[1];
+
+      const response = await fetch('/api/generate-image', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: editPrompt,
+          inputImages: [base64Data],
+          editMode: 'edit'
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.images?.[0]) {
+        const editedImage: ImageAsset = {
+          ...imageToEdit,
+          id: `edited_${imageId}_${Date.now()}`,
+          url: `data:${data.images[0].mimeType};base64,${data.images[0].data}`,
+          prompt: `${imageToEdit.prompt} | Edited: ${editPrompt}`,
+          metadata: {
+            ...imageToEdit.metadata,
+            editHistory: [...(imageToEdit.metadata.editHistory || []), editPrompt]
+          }
+        };
+
+        // Add edited image to the scene
+        setStoryboard(prev => ({
+          ...prev,
+          plan: prev.plan ? {
+            ...prev.plan,
+            scenes: prev.plan.scenes.map(s => 
+              s.id === sceneId 
+                ? { 
+                    ...s, 
+                    generatedImages: [...s.generatedImages, editedImage]
+                  }
+                : s
+            )
+          } : null
+        }));
+      }
+
+    } catch (error) {
+      console.error('Scene image editing error:', error);
+    }
+  };
+
   const handleGenerateVideo = async () => {
     try {
       setGenerationStatus({
         status: 'generating',
         progress: 10,
-        message: 'Preparing your video generation...'
+        message: 'Creating video from your storyboard...'
       });
 
+      if (!storyboard.plan) {
+        throw new Error('No storyboard plan available');
+      }
+
+      // Create scene-by-scene video prompt with timing
+      const selectedScenes = storyboard.plan.scenes
+        .filter(scene => scene.selectedImageId)
+        .map(scene => {
+          const selectedImage = scene.generatedImages.find(img => img.id === scene.selectedImageId);
+          return {
+            ...scene,
+            selectedImage
+          };
+        });
+
+      if (selectedScenes.length === 0) {
+        throw new Error('Please select at least one image from each scene');
+      }
+
+      // Build comprehensive VEO 3 prompt with storyboard structure
+      const storyboardPrompt = `
+Professional ${videoConfig.duration}-second advertisement for ${brandInfo.name} (${brandInfo.industry}).
+
+STORYBOARD SEQUENCE:
+${selectedScenes.map((scene, index) => `
+Scene ${scene.sceneNumber} (${scene.duration} seconds): ${scene.title}
+- Visual: ${scene.description}
+- Style: ${scene.visualStyle.lighting} lighting, ${scene.visualStyle.mood} mood, ${scene.visualStyle.cameraAngle} shot
+- Reference: ${scene.selectedImage?.prompt || scene.prompt}
+${index < selectedScenes.length - 1 ? '- Transition: Smooth cut to next scene\n' : ''}
+`).join('')}
+
+BRAND CONTEXT: ${brandInfo.brandVoice} tone, targeting ${brandInfo.targetAudience}
+VISUAL CONSISTENCY: ${storyboard.plan.visualConsistency.style}
+NARRATIVE: ${storyboard.plan.narrative.hook} → ${storyboard.plan.narrative.solution} → ${storyboard.plan.narrative.callToAction}
+
+Create seamless video with talking characters, synchronized audio, professional sound effects, and smooth transitions between scenes.
+      `.trim();
+
       const veoRequest: VeoGenerationRequest = {
-        prompt: createOptimizedPrompt(),
+        prompt: storyboardPrompt,
         duration: videoConfig.duration,
         aspectRatio: videoConfig.aspectRatio,
         style: videoConfig.style
@@ -442,112 +696,52 @@ const CreateAdPage: React.FC = () => {
                   </div>
                 )}
 
+                {/* Step 2: Marcus Chat & Storyboard Planning */}
                 {currentStep === 2 && (
                   <div className="space-y-6">
                     <div className="text-center mb-6">
                       <Wand2 className="w-12 h-12 mx-auto mb-4 text-purple-600" />
-                      <h2 className="text-2xl font-bold text-gray-900 mb-2">Design your video concept</h2>
-                      <p className="text-gray-600">Configure how VEO 3 will create your advertisement</p>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-2">Chat with Marcus & Plan Storyboard</h2>
+                      <p className="text-gray-600">Our creative director will plan the perfect advertisement structure</p>
                     </div>
 
-                    <div className="space-y-6">
-                      <div>
-                        <Label htmlFor="concept">Video Concept & Message *</Label>
-                        <Textarea
-                          id="concept"
-                          value={videoConfig.concept}
-                          onChange={(e) => setVideoConfig(prev => ({ ...prev, concept: e.target.value }))}
-                          placeholder="Describe your video concept, key message, and what you want viewers to feel or do..."
-                          className="mt-1"
-                          rows={4}
-                        />
-                        <p className="text-sm text-gray-600 mt-1">
-                          Be specific about scenes, emotions, actions, and your call-to-action
-                        </p>
-                      </div>
-
-                      <div className="grid md:grid-cols-3 gap-6">
-                        <div>
-                          <Label>Aspect Ratio</Label>
-                          <div className="mt-2 space-y-2">
-                            {aspectRatios.map((ratio) => (
-                              <label key={ratio.value} className="flex items-start space-x-3 cursor-pointer">
-                                <input
-                                  type="radio"
-                                  name="aspectRatio"
-                                  value={ratio.value}
-                                  checked={videoConfig.aspectRatio === ratio.value}
-                                  onChange={(e) => setVideoConfig(prev => ({ 
-                                    ...prev, 
-                                    aspectRatio: e.target.value as any 
-                                  }))}
-                                  className="w-4 h-4 text-purple-600 mt-1"
-                                />
-                                <div>
-                                  <p className="font-medium text-gray-900">{ratio.label}</p>
-                                  <p className="text-sm text-gray-600">{ratio.description}</p>
-                                </div>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label>Duration</Label>
-                          <div className="mt-2">
-                            <select
-                              value={videoConfig.duration}
-                              onChange={(e) => setVideoConfig(prev => ({ 
-                                ...prev, 
-                                duration: parseInt(e.target.value) 
-                              }))}
-                              className="w-full p-2 border border-gray-300 rounded-md"
-                            >
-                              <option value={15}>15 seconds</option>
-                              <option value={30}>30 seconds</option>
-                              <option value={60}>60 seconds</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label>Video Style</Label>
-                          <div className="mt-2">
-                            <select
-                              value={videoConfig.style}
-                              onChange={(e) => setVideoConfig(prev => ({ 
-                                ...prev, 
-                                style: e.target.value 
-                              }))}
-                              className="w-full p-2 border border-gray-300 rounded-md"
-                            >
-                              {videoStyles.map((style) => (
-                                <option key={style} value={style}>
-                                  {style.charAt(0).toUpperCase() + style.slice(1)}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Preview of the generated prompt */}
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-gray-900 mb-2">Generated Prompt Preview:</h4>
-                        <p className="text-sm text-gray-700">
-                          {createOptimizedPrompt()}
-                        </p>
-                      </div>
-                    </div>
+                    <MarcusChatAndPlanning 
+                      brandInfo={brandInfo}
+                      onGenerateStoryboard={handleGenerateStoryboard}
+                      isGenerating={storyboard.isGeneratingPlan}
+                      planGenerated={storyboard.planGenerated}
+                      storyboardPlan={storyboard.plan}
+                    />
                   </div>
                 )}
 
                 {currentStep === 3 && (
                   <div className="space-y-6">
                     <div className="text-center mb-6">
+                      <ImageIcon className="w-12 h-12 mx-auto mb-4 text-purple-600" />
+                      <h2 className="text-2xl font-bold text-gray-900 mb-2">Select Your Storyboard Images</h2>
+                      <p className="text-gray-600">Choose the best image for each scene of your advertisement</p>
+                    </div>
+
+                    {storyboard.plan && (
+                      <StoryboardSelection 
+                        storyboardPlan={storyboard.plan}
+                        onGenerateSceneImages={handleGenerateSceneImages}
+                        onSelectImage={handleSelectSceneImage}
+                        onEditImage={handleEditSceneImage}
+                        isGeneratingImages={storyboard.isGeneratingImages}
+                        currentGeneratingScene={storyboard.currentGeneratingScene}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {currentStep === 4 && (
+                  <div className="space-y-6">
+                    <div className="text-center mb-6">
                       <Sparkles className="w-12 h-12 mx-auto mb-4 text-purple-600" />
                       <h2 className="text-2xl font-bold text-gray-900 mb-2">Generate Your Video Ad</h2>
-                      <p className="text-gray-600">Review your settings and let VEO 3 create your masterpiece</p>
+                      <p className="text-gray-600">Using your approved images, let VEO 3 create your masterpiece with sound and talking characters</p>
                     </div>
 
                     {/* Summary */}
@@ -731,7 +925,7 @@ const CreateAdPage: React.FC = () => {
           </motion.div>
 
           {/* Navigation Buttons */}
-          {generationStatus.status === 'idle' && currentStep < 3 && (
+          {generationStatus.status === 'idle' && currentStep < 4 && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -750,7 +944,8 @@ const CreateAdPage: React.FC = () => {
                 onClick={handleNextStep}
                 disabled={
                   (currentStep === 1 && (!brandInfo.name || !brandInfo.industry || !brandInfo.targetAudience)) ||
-                  (currentStep === 2 && !videoConfig.concept)
+                  (currentStep === 2 && !storyboard.planGenerated) ||
+                  (currentStep === 3 && (!storyboard.plan || storyboard.plan.scenes.every(s => !s.selectedImageId)))
                 }
                 className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
               >
@@ -760,6 +955,388 @@ const CreateAdPage: React.FC = () => {
             </motion.div>
           )}
         </div>
+      </div>
+    </div>
+  );
+};
+
+// Marcus Chat and Storyboard Components
+
+interface MarcusChatAndPlanningProps {
+  brandInfo: BrandInfo;
+  onGenerateStoryboard: (chatMessages: ChatMessage[], adGoals: string[]) => void;
+  isGenerating: boolean;
+  planGenerated: boolean;
+  storyboardPlan: StoryboardPlan | null;
+}
+
+const MarcusChatAndPlanning: React.FC<MarcusChatAndPlanningProps> = ({ 
+  brandInfo, 
+  onGenerateStoryboard, 
+  isGenerating, 
+  planGenerated, 
+  storyboardPlan 
+}) => {
+  const [message, setMessage] = useState('');
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [adGoals, setAdGoals] = useState<string[]>([]);
+
+  const handleSendMessage = () => {
+    if (message.trim()) {
+      const newMessage: ChatMessage = {
+        id: `msg_${Date.now()}`,
+        role: 'user',
+        content: message.trim(),
+        timestamp: new Date()
+      };
+
+      setChatMessages(prev => [...prev, newMessage]);
+      setMessage('');
+    }
+  };
+
+  const handleAddGoal = (goal: string) => {
+    if (goal && !adGoals.includes(goal)) {
+      setAdGoals(prev => [...prev, goal]);
+    }
+  };
+
+  const commonGoals = [
+    'Increase brand awareness',
+    'Drive website traffic',
+    'Generate leads',
+    'Boost sales',
+    'Build trust',
+    'Launch new product',
+    'Educate customers',
+    'Improve brand perception'
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Chat with Marcus */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Wand2 className="w-5 h-5 text-purple-600" />
+            <span>Chat with Marcus</span>
+          </CardTitle>
+          <p className="text-sm text-gray-600">
+            Tell Marcus about your advertisement goals and vision
+          </p>
+        </CardHeader>
+        <CardContent>
+          {chatMessages.length > 0 && (
+            <div className="bg-gray-50 rounded-lg p-4 mb-4 max-h-40 overflow-y-auto">
+              {chatMessages.map(msg => (
+                <div key={msg.id} className={`mb-2 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+                  <div className={`inline-block px-3 py-2 rounded-lg text-sm ${
+                    msg.role === 'user' 
+                      ? 'bg-purple-600 text-white' 
+                      : 'bg-white border border-gray-200'
+                  }`}>
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          <div className="flex space-x-2">
+            <Input
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Tell Marcus about your advertisement vision..."
+              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+            />
+            <Button onClick={handleSendMessage} disabled={!message.trim()}>
+              Send
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Ad Goals Selection */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Advertisement Goals</CardTitle>
+          <p className="text-sm text-gray-600">
+            What do you want this advertisement to achieve?
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-2 gap-3 mb-4">
+            {commonGoals.map(goal => (
+              <button
+                key={goal}
+                onClick={() => handleAddGoal(goal)}
+                className={`text-left p-3 rounded-lg border transition-colors ${
+                  adGoals.includes(goal)
+                    ? 'bg-purple-50 border-purple-300 text-purple-700'
+                    : 'bg-white border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                {goal}
+              </button>
+            ))}
+          </div>
+
+          {adGoals.length > 0 && (
+            <div className="mb-4">
+              <p className="text-sm font-medium text-gray-700 mb-2">Selected Goals:</p>
+              <div className="flex flex-wrap gap-2">
+                {adGoals.map(goal => (
+                  <Badge key={goal} variant="secondary" className="bg-purple-100 text-purple-700">
+                    {goal}
+                    <button 
+                      onClick={() => setAdGoals(prev => prev.filter(g => g !== goal))}
+                      className="ml-2 text-purple-500 hover:text-purple-700"
+                    >
+                      ×
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Generate Storyboard */}
+      <div className="text-center">
+        {!planGenerated ? (
+          <Button
+            onClick={() => onGenerateStoryboard(chatMessages, adGoals)}
+            disabled={isGenerating || chatMessages.length === 0 || adGoals.length === 0}
+            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-8 py-3"
+            size="lg"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Marcus is planning your storyboard...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-5 h-5 mr-2" />
+                Generate Storyboard Plan
+              </>
+            )}
+          </Button>
+        ) : (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+            <CheckCircle className="w-12 h-12 mx-auto mb-4 text-green-600" />
+            <h3 className="text-lg font-semibold text-green-800 mb-2">
+              Storyboard Plan Ready! 🎬
+            </h3>
+            <p className="text-green-700 mb-4">
+              Marcus created a {storyboardPlan?.scenes.length}-scene storyboard for your {storyboardPlan?.totalDuration}-second advertisement
+            </p>
+            {storyboardPlan && (
+              <div className="text-left bg-white rounded-lg p-4 text-sm">
+                <p className="font-medium mb-2">Narrative Structure:</p>
+                <p className="text-gray-700">{storyboardPlan.narrative.hook} → {storyboardPlan.narrative.solution} → {storyboardPlan.narrative.callToAction}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+interface StoryboardSelectionProps {
+  storyboardPlan: StoryboardPlan;
+  onGenerateSceneImages: (sceneId: string) => void;
+  onSelectImage: (sceneId: string, imageId: string) => void;
+  onEditImage: (sceneId: string, imageId: string, editPrompt: string) => void;
+  isGeneratingImages: boolean;
+  currentGeneratingScene: number | null;
+}
+
+const StoryboardSelection: React.FC<StoryboardSelectionProps> = ({
+  storyboardPlan,
+  onGenerateSceneImages,
+  onSelectImage,
+  onEditImage,
+  isGeneratingImages,
+  currentGeneratingScene
+}) => {
+  const [editPrompts, setEditPrompts] = useState<Record<string, string>>({});
+
+  const handleEditSubmit = (sceneId: string, imageId: string) => {
+    const key = `${sceneId}_${imageId}`;
+    const prompt = editPrompts[key];
+    if (prompt?.trim()) {
+      onEditImage(sceneId, imageId, prompt);
+      setEditPrompts(prev => ({ ...prev, [key]: '' }));
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      {/* Storyboard Overview */}
+      <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-lg">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          {storyboardPlan.scenes.length}-Scene Storyboard ({storyboardPlan.totalDuration} seconds)
+        </h3>
+        <div className="grid md:grid-cols-3 gap-4 text-sm">
+          <div>
+            <strong>Narrative:</strong>
+            <p className="text-gray-700">{storyboardPlan.narrative.hook} → {storyboardPlan.narrative.solution}</p>
+          </div>
+          <div>
+            <strong>Visual Style:</strong>
+            <p className="text-gray-700">{storyboardPlan.visualConsistency.style}</p>
+          </div>
+          <div>
+            <strong>Characters:</strong>
+            <p className="text-gray-700">{storyboardPlan.visualConsistency.characters.join(', ')}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Scene-by-Scene Selection */}
+      {storyboardPlan.scenes.map((scene, index) => (
+        <Card key={scene.id} className="overflow-hidden">
+          <CardHeader className="bg-gray-50">
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                  {scene.sceneNumber}
+                </div>
+                <div>
+                  <h4 className="font-semibold">{scene.title}</h4>
+                  <p className="text-sm text-gray-600 font-normal">{scene.duration} seconds</p>
+                </div>
+              </div>
+              <Badge variant="outline">
+                {scene.visualStyle.lighting} • {scene.visualStyle.mood}
+              </Badge>
+            </CardTitle>
+            <p className="text-gray-700">{scene.description}</p>
+          </CardHeader>
+          
+          <CardContent className="p-6">
+            {scene.generatedImages.length === 0 ? (
+              <div className="text-center py-8">
+                <ImageIcon className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                <p className="text-gray-600 mb-4">Generate image options for this scene</p>
+                <Button
+                  onClick={() => onGenerateSceneImages(scene.id)}
+                  disabled={isGeneratingImages}
+                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                >
+                  {isGeneratingImages && currentGeneratingScene === scene.sceneNumber ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generating Scene {scene.sceneNumber}...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Generate Scene Images
+                    </>
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <h5 className="font-medium text-gray-900">Choose your favorite image:</h5>
+                
+                <div className="grid md:grid-cols-3 gap-4">
+                  {scene.generatedImages.map((image, imgIndex) => (
+                    <div
+                      key={image.id}
+                      className={`relative rounded-lg overflow-hidden border-2 cursor-pointer transition-all ${
+                        image.approved 
+                          ? 'border-green-500 ring-2 ring-green-200' 
+                          : 'border-gray-200 hover:border-purple-300'
+                      }`}
+                      onClick={() => onSelectImage(scene.id, image.id)}
+                    >
+                      <div className="aspect-video">
+                        <img
+                          src={image.url}
+                          alt={`Scene ${scene.sceneNumber} Option ${imgIndex + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      
+                      {image.approved && (
+                        <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1">
+                          <CheckCircle className="w-4 h-4" />
+                        </div>
+                      )}
+                      
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
+                        <p className="text-white text-xs">Option {imgIndex + 1}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {scene.selectedImageId && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <div className="flex items-center space-x-2 text-green-700 text-sm">
+                      <CheckCircle className="w-4 h-4" />
+                      <span>Scene {scene.sceneNumber} image selected!</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Edit Options */}
+                {scene.generatedImages.length > 0 && (
+                  <div className="border-t pt-4 space-y-3">
+                    <p className="text-sm font-medium text-gray-700">Need adjustments? Edit any image:</p>
+                    {scene.generatedImages.map((image, imgIndex) => (
+                      <div key={`edit_${image.id}`} className="flex space-x-2">
+                        <Input
+                          placeholder={`Edit Option ${imgIndex + 1} (e.g., "make brighter", "add smile")`}
+                          value={editPrompts[`${scene.id}_${image.id}`] || ''}
+                          onChange={(e) => setEditPrompts(prev => ({ 
+                            ...prev, 
+                            [`${scene.id}_${image.id}`]: e.target.value 
+                          }))}
+                          className="text-sm"
+                        />
+                        <Button
+                          onClick={() => handleEditSubmit(scene.id, image.id)}
+                          size="sm"
+                          variant="outline"
+                          disabled={!editPrompts[`${scene.id}_${image.id}`]?.trim()}
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+
+      {/* Progress Summary */}
+      <div className="text-center">
+        {storyboardPlan.scenes.filter(s => s.selectedImageId).length === storyboardPlan.scenes.length ? (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+            <CheckCircle className="w-12 h-12 mx-auto mb-4 text-green-600" />
+            <h3 className="text-lg font-semibold text-green-800 mb-2">
+              Storyboard Complete! 🎬
+            </h3>
+            <p className="text-green-700">
+              All {storyboardPlan.scenes.length} scenes have selected images. Ready to generate your video!
+            </p>
+          </div>
+        ) : (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-blue-700">
+              Progress: {storyboardPlan.scenes.filter(s => s.selectedImageId).length} of {storyboardPlan.scenes.length} scenes complete
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

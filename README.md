@@ -13,15 +13,21 @@ Transform your advertising with cutting-edge AI technology. Create professional 
 - **Professional Quality**: Cinematic effects with smooth camera movements
 - **Custom Prompts**: AI-optimized prompts for maximum impact
 
-### 🖼️ Smart Image Creation
-- **Google Imagen**: High-quality image generation for ads
-- **Brand Consistency**: Maintains visual identity across all assets
-- **Multiple Formats**: Support for various aspect ratios and styles
+### 🍌 Nano Banana Image Generation *(NEW)*
+- **Gemini 2.5 Flash Image**: Google's latest AI image creation and editing technology  
+- **Text-to-Image**: Generate high-quality images from descriptive prompts
+- **Image Editing**: Modify existing images with natural language commands
+- **Multi-Image Composition**: Combine and style multiple images seamlessly
+- **Iterative Refinement**: Chat-based editing for perfect results
+- **User Approval Workflow**: Review and approve images before video generation
 
-### 🧠 Creative Expert AI (Marcus)
-- **Multi-Provider AI**: Powered by Replicate, OpenRouter, and Hugging Face
+### 🧠 Marcus Creative Director AI *(ENHANCED)*
+- **Intelligent Storyboarding**: Automatically plans professional advertisement structure
+- **Dynamic Scene Planning**: Optimizes timing (4/6/8 seconds) for maximum impact
+- **Professional Prompting**: Generates high-quality Nano Banana image prompts
+- **Multi-Provider Reliability**: Powered by Replicate, OpenRouter, and Hugging Face
 - **LLaMA 3.8B**: Advanced language models for creative expertise
-- **25+ Years Experience**: Simulated expertise in creative direction
+- **25+ Years Experience**: Simulated expertise in creative direction and storyboarding
 - **Brand Analysis**: Deep understanding of your brand and audience
 - **Real-time Chat**: Interactive creative consultation with 99.9% uptime
 
@@ -39,9 +45,17 @@ Transform your advertising with cutting-edge AI technology. Create professional 
 
 ## 🆕 **Latest Updates (September 2025)**
 
-### 🎬 **VEO 3 Video Generation - FULLY IMPLEMENTED** *(NEW)*
-- **Complete Integration**: Full VEO 3 API integration with Google Cloud authentication ✅
-- **Professional UI**: 3-step wizard interface for brand setup, video design, and generation ✅
+### 🎬 **Marcus-Powered Storyboard System - FULLY IMPLEMENTED** *(REVOLUTIONARY)*
+- **AI Creative Director**: Marcus plans professional storyboards automatically ✅
+- **4-Step Intelligent Workflow**: Brand → Marcus Planning → Scene Selection → Video Generation ✅
+- **Nano Banana Integration**: 2-3 image options per scene with professional prompts ✅
+- **Dynamic Scene Timing**: AI determines optimal 4, 6, or 8-second scene durations ✅
+- **Visual Consistency**: Maintains characters, style, and branding across all scenes ✅
+- **Talking Characters + Sound**: Complete VEO 3 videos with synchronized audio ✅
+
+### 🎬 **VEO 3 Video Generation - ENHANCED WITH STORYBOARD** *(UPDATED)*
+- **Storyboard Integration**: Uses selected scene images for precise video generation ✅
+- **Professional UI**: 4-step wizard with Marcus chat and scene selection ✅
 - **Real-time Progress**: Live status tracking with progress bars and detailed feedback ✅  
 - **Production Ready**: Authentication, permissions, and error handling fully implemented ✅
 - **Multi-Format Support**: 16:9 (YouTube), 9:16 (TikTok), 1:1 (Instagram) aspect ratios ✅
@@ -93,8 +107,9 @@ Transform your advertising with cutting-edge AI technology. Create professional 
 - **Radix UI**: Accessible component primitives
 
 ### AI & ML
-- **Google Veo**: Video generation API
-- **Google Imagen**: Image generation API
+- **Google Veo 3**: Video generation with sound and talking characters
+- **Nano Banana (Gemini 2.5 Flash Image)**: Advanced image generation and editing
+- **Google Imagen**: Legacy image generation (deprecated)
 - **Replicate**: Primary LLaMA model hosting (99.9% uptime)
 - **OpenRouter**: Secondary AI provider with multiple models
 - **Hugging Face**: Tertiary fallback for maximum reliability
@@ -129,13 +144,16 @@ Transform your advertising with cutting-edge AI technology. Create professional 
 
 ### ✅ Current Project Status
 
-🎉 **FULLY IMPLEMENTED AND READY FOR PRODUCTION**
+🎉 **MARCUS-POWERED STORYBOARD SYSTEM FULLY IMPLEMENTED**
 
-All core features are complete and tested:
-- ✅ **VEO 3 Video Generation**: Complete integration with professional UI *(NEW)*
+Revolutionary AI-driven advertisement creation now complete:
+- ✅ **Marcus Storyboard System**: Intelligent scene planning and professional prompting *(REVOLUTIONARY)*
+- ✅ **Nano Banana Integration**: Advanced image generation with editing capabilities *(NEW)*
+- ✅ **4-Step Intelligent Workflow**: Brand → Marcus Planning → Scene Selection → Video *(NEW)*
+- ✅ **VEO 3 with Storyboard**: Enhanced video generation with talking characters + sound *(ENHANCED)*
 - ✅ **Firebase Authentication & Database**: Full integration working
-- ✅ **Multi-provider Creative Expert (Marcus)**: 99.9% uptime with LLaMA
-- ✅ **Google Cloud Integration**: VEO 3, Imagen, and Text-to-Speech APIs  
+- ✅ **Multi-provider Creative Expert (Marcus)**: 99.9% uptime with enhanced storyboarding
+- ✅ **Google Cloud Integration**: VEO 3, Nano Banana, and Text-to-Speech APIs  
 - ✅ **Modern responsive UI**: TailwindCSS with accessibility compliance
 - ✅ **Complete dashboard**: Project management and asset storage
 - ✅ **Brand analysis system**: Conversation-based brand discovery
@@ -185,9 +203,9 @@ All core features are complete and tested:
 
    **Required APIs:**
    - Firebase project configuration
-   - Google Cloud service account credentials  
+   - Google Cloud service account credentials (for VEO 3)
+   - **Gemini API Key** for Nano Banana image generation *(NEW)*
    - **Replicate API Token** for reliable LLaMA access (primary)
-   - Google AI Platform API access
    - Optional: OpenRouter/Hugging Face tokens for additional redundancy
 
 5. **Start the development server**
@@ -251,15 +269,19 @@ node playwright-final-test.js
 
 ### Ad Creation Process
 
-1. **Project Setup**: Define ad goals, duration, and target metrics
-2. **Concept Development**: Work with Marcus to develop creative concepts
-3. **Scene Planning**: Break down your 30-second ad into key scenes
-4. **Asset Generation**: 
-   - Generate images with Google Imagen
-   - Create video content with Google Veo
-   - Produce audio with Google Text-to-Speech
-5. **Review & Refine**: Preview and make adjustments
-6. **Export & Deploy**: Download final ad for your campaigns
+**🎬 4-Step Professional Process (Updated for Nano Banana):**
+
+1. **Brand Information**: Define your brand identity, voice, and target audience
+2. **🍌 Image Generation & Approval**: 
+   - Generate consistent characters and products with Nano Banana
+   - Edit images with natural language commands
+   - Approve final images for video production
+3. **Video Concept Design**: Configure duration, aspect ratio, and creative direction
+4. **🎥 Video Generation with Sound**: 
+   - VEO 3 creates video using approved images
+   - Includes talking characters with synchronized audio
+   - Professional sound effects and music
+   - Complete 30-second advertisement ready for deployment
 
 ### Creative Expert (Marcus) Tips
 
@@ -273,31 +295,40 @@ node playwright-final-test.js
 ```
 src/
 ├── app/                    # Next.js App Router pages
-│   ├── dashboard/         # Dashboard page
-│   ├── globals.css        # Global styles (+ sr-only utility)
-│   ├── layout.tsx         # Root layout (+ offline banner)
-│   └── page.tsx          # Home page
-├── components/            # React components
-│   ├── auth/             # Authentication components
-│   ├── creative/         # AI creative tools (+ accessibility)
-│   ├── dashboard/        # Dashboard components (+ empty states)
-│   ├── layout/           # Layout components
-│   ├── providers/        # Context providers (+ logging)
-│   └── ui/               # Reusable UI components
+│   ├── api/               # API routes
+│   │   ├── chat/         # Marcus chat API
+│   │   ├── generate-image/    # Nano Banana image generation *(NEW)*
+│   │   ├── generate-storyboard/ # Marcus storyboard planning *(NEW)*
+│   │   ├── generate-video/    # VEO 3 video generation
+│   │   └── video-status/ # Video generation status
+│   ├── create/           # Ad creation workflow *(ENHANCED)*
+│   ├── dashboard/        # Dashboard page
+│   ├── globals.css       # Global styles (+ sr-only utility)
+│   ├── layout.tsx        # Root layout (+ offline banner)
+│   └── page.tsx         # Home page
+├── components/           # React components
+│   ├── auth/            # Authentication components
+│   ├── creative/        # AI creative tools (+ accessibility)
+│   ├── dashboard/       # Dashboard components (+ empty states)
+│   ├── layout/          # Layout components
+│   ├── providers/       # Context providers (+ logging)
+│   └── ui/              # Reusable UI components
 │       ├── error-boundary.tsx  # React error boundaries
 │       ├── offline-banner.tsx  # Network status banner
-│       └── ...           # Other UI components
-├── hooks/                # Custom React hooks
+│       └── ...          # Other UI components
+├── hooks/               # Custom React hooks
 │   └── use-online-status.ts   # Network status detection
-├── lib/                  # Utility libraries
-│   ├── firebase.ts       # Firebase client config
+├── lib/                 # Utility libraries
+│   ├── firebase.ts      # Firebase client config
 │   ├── firebase-admin.ts # Firebase admin config
-│   ├── google-ai.ts      # Google AI services
-│   ├── llama.ts          # LLaMA integration (+ logging)
-│   ├── logger.ts         # Structured logging system
-│   └── utils.ts          # Helper functions
-└── types/                # TypeScript type definitions
-    └── index.ts          # Main type definitions
+│   ├── google-ai.ts     # Google AI services (VEO 3)
+│   ├── marcus-storyboard.ts # Marcus storyboard planning service *(NEW)*
+│   ├── nano-banana.ts   # Nano Banana image generation service *(NEW)*
+│   ├── llama.ts         # LLaMA integration (+ logging)
+│   ├── logger.ts        # Structured logging system
+│   └── utils.ts         # Helper functions
+└── types/               # TypeScript type definitions
+    └── index.ts         # Enhanced with storyboard types *(UPDATED)*
 
 # Testing & Validation
 ├── test-providers.js     # AI provider connectivity test
@@ -312,32 +343,75 @@ src/
 
 ## 🔧 API Integrations
 
-### Google Veo Video Generation
+### 🎬 Marcus Storyboard Generation *(NEW)*
 
 ```typescript
+// Marcus creates professional storyboard plan
+const storyboardRequest: MarcusStoryboardRequest = {
+  brandInfo: { name: "TechCorp", industry: "Technology", ... },
+  chatContext: ["I want an engaging tech advertisement", ...],
+  adGoals: ["Increase brand awareness", "Drive website traffic"],
+  targetDuration: 30
+};
+
+const response = await fetch('/api/generate-storyboard', {
+  method: 'POST',
+  body: JSON.stringify(storyboardRequest)
+});
+
+// Result: Professional storyboard with scenes, timing, and prompts
+const { storyboard } = await response.json();
+```
+
+### Google Veo Video Generation *(ENHANCED WITH STORYBOARD)*
+
+```typescript
+// Enhanced with storyboard integration
+const storyboardPrompt = `
+Professional 30-second advertisement for TechCorp.
+
+STORYBOARD SEQUENCE:
+Scene 1 (8 seconds): Hook - Professional showing frustration with old tech
+Scene 2 (12 seconds): Solution - Discovering TechCorp's innovative platform  
+Scene 3 (10 seconds): Results - Confident professional using new solution
+
+Create seamless video with talking characters and professional audio.
+`;
+
 const videoRequest: VeoGenerationRequest = {
-  prompt: "Create a professional 30-second advertisement...",
+  prompt: storyboardPrompt,
   duration: 30,
   aspectRatio: "16:9",
-  style: "cinematic",
-  camera: "smooth",
-  lighting: "natural"
+  style: "cinematic"
 };
 
 const { jobId } = await googleAI.generateVideo(videoRequest);
 ```
 
-### Google Imagen Image Generation
+### 🍌 Nano Banana Image Generation *(NEW)*
 
 ```typescript
-const imageRequest: ImagenGenerationRequest = {
-  prompt: "Professional product photography...",
-  aspectRatio: "16:9",
-  style: "photographic",
-  quality: "high"
+// Text-to-Image Generation
+const nanoBananaRequest: NanoBananaGenerationRequest = {
+  prompt: "Create consistent character images for brand advertisement: professional businesswoman in modern office setting...",
+  model: "gemini-2.5-flash-image-preview"
 };
 
-const { imageUrl } = await googleAI.generateImage(imageRequest);
+const response = await fetch('/api/generate-image', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(nanoBananaRequest)
+});
+
+// Image Editing & Composition  
+const editResponse = await fetch('/api/generate-image', {
+  method: 'PUT',
+  body: JSON.stringify({
+    prompt: "Make the background blue and add a confident smile",
+    inputImages: [base64ImageData],
+    editMode: 'edit'
+  })
+});
 ```
 
 ### Multi-Provider Creative Expert

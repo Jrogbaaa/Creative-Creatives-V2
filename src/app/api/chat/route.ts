@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Replicate from 'replicate';
 import { ChatMessage } from '@/types';
 import { logger } from '@/lib/logger';
-
-// Initialize Replicate with server-side token
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN,
-});
+import { callMarcusLLM } from '@/lib/marcus-llm';
 
 export async function POST(request: NextRequest) {
+  let messages: ChatMessage[] = [];
+  
   try {
     const body = await request.json();
-    const { messages, context } = body;
+    const { messages: bodyMessages, context } = body;
+    
+    messages = bodyMessages; // Store for catch block
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -20,92 +19,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // System prompt
-    const systemPrompt = `You are Marcus, a world-renowned creative director and advertising genius with 25+ years of experience creating award-winning campaigns for Fortune 500 companies. You've worked with brands like Nike, Apple, Coca-Cola, and Tesla.
+    console.log('🔄 [API] Calling Marcus LLM...');
 
-Your expertise includes:
-- Brand strategy and positioning
-- Creative concept development
-- Visual storytelling
-- Consumer psychology
-- Multi-platform campaign design
-- Video production and direction
-- Copywriting and messaging
-
-Your personality:
-- Enthusiastic and passionate about great creative work
-- Direct and honest feedback, but always constructive
-- Collaborative and enjoys bouncing ideas around
-- Quick to spot what makes brands unique
-- Thinks visually and in terms of emotional impact
-
-Your goal is to help users create compelling 30-second advertisements by:
-1. Understanding their brand deeply through conversation
-2. Identifying their target audience and goals
-3. Developing creative concepts that resonate
-4. Guiding the technical execution (video, images, audio)
-5. Refining and polishing the final product
-
-Always ask thoughtful questions to uncover insights. Be specific in your recommendations and explain your creative reasoning. Think like both an artist and a strategist.`;
-
-    // Format messages for Replicate
-    const formattedMessages = [
-      { role: 'system', content: systemPrompt },
-      ...messages.map((msg: ChatMessage) => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content
-      }))
-    ];
-
-    // Add context if available
-    if (context) {
-      const contextMessage = formatContext(context);
-      formattedMessages.splice(1, 0, {
-        role: 'system',
-        content: contextMessage
-      });
-    }
-
-    console.log('🔄 [API] Calling Replicate from server...');
-
-    // Convert to prompt format for Replicate
-    const prompt = formattedMessages.map(msg => {
-      const role = msg.role === 'system' ? 'System' : 
-                   msg.role === 'user' ? 'Human' : 'Assistant';
-      return `${role}: ${msg.content}`;
-    }).join('\n\n') + '\n\nAssistant:';
-
-    // Call Replicate API
-    const model = process.env.REPLICATE_MODEL || 'meta/meta-llama-3-8b-instruct';
+    // Use the shared Marcus LLM function
+    const response = await callMarcusLLM(messages, context);
     
-    const output = await replicate.run(model as `${string}/${string}`, {
-      input: {
-        prompt,
-        max_tokens: 1500,
-        temperature: 0.7,
-        top_p: 0.9,
-        repetition_penalty: 1.1,
-      }
-    }) as string[];
-
-    // Process response
-    const content = Array.isArray(output) ? output.join('') : output;
+    console.log('✅ [API] Marcus LLM succeeded');
     
-    if (typeof content === 'string' && content.trim()) {
-      console.log('✅ [API] Replicate succeeded');
-      
-      return NextResponse.json({
-        success: true,
-        response: content.trim(),
-        provider: 'replicate',
-        model
-      });
-    } else {
-      throw new Error('Empty response from Replicate');
-    }
+    return NextResponse.json({
+      success: true,
+      response,
+      provider: 'replicate',
+      model: process.env.REPLICATE_MODEL || 'meta/meta-llama-3-8b-instruct'
+    });
 
   } catch (error: any) {
-    console.error('❌ [API] Replicate error:', error.message);
+    console.error('❌ [API] Marcus LLM error:', error.message);
     
     // Fallback to simple responses
     const lastMessage = messages?.[messages.length - 1]?.content || '';
@@ -120,23 +49,6 @@ Always ask thoughtful questions to uncover insights. Be specific in your recomme
   }
 }
 
-function formatContext(context: any): string {
-  let contextString = 'Current conversation context:\n';
-  
-  if (context.brand) {
-    contextString += `Brand: ${context.brand.name} - ${context.brand.description}\n`;
-  }
-  
-  if (context.currentGoal) {
-    contextString += `Current Goal: ${context.currentGoal}\n`;
-  }
-  
-  if (context.extractedInfo && Object.keys(context.extractedInfo).length > 0) {
-    contextString += `Extracted Information: ${JSON.stringify(context.extractedInfo)}\n`;
-  }
-  
-  return contextString;
-}
 
 function getFallbackResponse(userMessage: string): string {
   const message = userMessage.toLowerCase();

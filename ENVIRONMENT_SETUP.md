@@ -30,6 +30,9 @@ GOOGLE_AI_API_KEY=AIzaSyB4CnhJ2DOlEaBkmEYBOKmB5MTE_37MRjs
 VEO_API_ENDPOINT=https://us-central1-aiplatform.googleapis.com/v1/projects/creative-creatives-v2/locations/us-central1/publishers/google/models/veo-001:predict
 IMAGEN_API_ENDPOINT=https://us-central1-aiplatform.googleapis.com/v1/projects/creative-creatives-v2/locations/us-central1/publishers/google/models/imagen-3.0-generate-001:predict
 
+# Gemini API (for Nano Banana image generation) - NEW REQUIREMENT
+GEMINI_API_KEY=your_gemini_api_key_here_from_ai_studio
+
 # Multi-Provider AI System (Marcus Creative Expert)
 # Primary: Replicate (most reliable)
 REPLICATE_API_TOKEN=your_replicate_api_token_here
@@ -163,6 +166,47 @@ Once API tests pass, test the full application:
 ⚠️ **All AI providers fail**: Check tokens and internet connection
 ⚠️ **Firebase fails**: Check project configuration  
 ⚠️ **Google Cloud fails**: Verify service account permissions
+⚠️ **Nano Banana fails**: Verify `GEMINI_API_KEY` from Google AI Studio
+
+---
+
+## 🎬 **NEW: Marcus Storyboard System Requirements**
+
+### **Additional Setup for Nano Banana Integration**
+
+The Marcus-powered storyboard system requires a **Gemini API key** for advanced image generation:
+
+1. **Visit Google AI Studio**: https://aistudio.google.com/
+2. **Get API Key**: Click "Get API Key" in the left sidebar
+3. **Create New Key**: Generate a new API key for Gemini API
+4. **Add to Environment**: Set `GEMINI_API_KEY=your_key_here` in `.env.local`
+
+### **Testing the Complete System**
+
+```bash
+# Test Marcus storyboard generation
+node -e "
+console.log('Testing Marcus Storyboard System...');
+// This will test the complete workflow once implemented
+"
+
+# Test Nano Banana image generation  
+node -e "
+console.log('Testing Nano Banana...');
+// This will validate Gemini API integration
+"
+```
+
+### **Marcus System Benefits**
+
+With the new environment setup, you get:
+
+- ✅ **Intelligent Storyboarding**: Marcus plans professional advertisement structure
+- ✅ **Advanced Image Generation**: Nano Banana creates commercial-quality images  
+- ✅ **Scene-by-Scene Control**: 2-3 image options per storyboard scene
+- ✅ **Professional Prompting**: AI generates all high-quality prompts automatically
+- ✅ **Visual Consistency**: Maintains brand identity across all generated content
+- ✅ **Talking Character Videos**: VEO 3 creates videos with synchronized audio
 
 **Minimum requirement**: At least one AI provider must work for Marcus to respond.
 

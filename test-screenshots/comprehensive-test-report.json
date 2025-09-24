@@ -1,0 +1,41 @@
+{
+  "timestamp": "2025-09-24T10:14:33.511Z",
+  "totalTests": 4,
+  "passed": 2,
+  "failed": 2,
+  "results": [
+    {
+      "test": "Authentication Flow",
+      "passed": false,
+      "details": "Error: locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('button[type=\"submit\"], button:has-text(\"Sign In\"), button:has-text(\"Login\")').first()\n    - locator resolved to <button class=\"inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2\">Sign In</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is visible, enabled and stable\n      - scrolling into view if needed\n      - done scrolling\n      - <div class=\"fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4\">…</div> intercepts pointer events\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is visible, enabled and stable\n      - scrolling into view if needed\n      - done scrolling\n      - <div class=\"fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4\">…</div> intercepts pointer events\n    - retrying click action\n      - waiting 100ms\n    56 × waiting for element to be visible, enabled and stable\n       - element is visible, enabled and stable\n       - scrolling into view if needed\n       - done scrolling\n       - <div class=\"fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4\">…</div> intercepts pointer events\n     - retrying click action\n       - waiting 500ms\n",
+      "timestamp": "2025-09-24T10:14:30.397Z"
+    },
+    {
+      "test": "Navigation to Create Page",
+      "passed": false,
+      "details": "Final URL: http://localhost:3000/",
+      "timestamp": "2025-09-24T10:14:30.397Z"
+    },
+    {
+      "test": "API: Chat API Health",
+      "passed": true,
+      "details": "Endpoint accessible",
+      "timestamp": "2025-09-24T10:14:32.754Z"
+    },
+    {
+      "test": "API: Generate Image API Health",
+      "passed": true,
+      "details": "Endpoint accessible",
+      "timestamp": "2025-09-24T10:14:33.510Z"
+    }
+  ],
+  "screenshots": [
+    "2025-09-24T10-11-05-177Z-01-create-page-loaded.png",
+    "2025-09-24T10-13-54-584Z-05-create-page-attempt.png",
+    "2025-09-24T10-13-55-666Z-01-homepage-loaded.png",
+    "2025-09-24T10-13-58-432Z-02-auth-modal-opened.png",
+    "2025-09-24T10-13-59-673Z-03-credentials-filled.png",
+    "quick-test-after-interaction.png",
+    "quick-test-create-page.png"
+  ]
+}
