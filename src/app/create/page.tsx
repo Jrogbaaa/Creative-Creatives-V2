@@ -28,8 +28,8 @@ import {
   Image as ImageIcon,
   RefreshCw,
   Trash2,
-  Edit3,
   Eye,
+  X,
   ThumbsUp,
   ThumbsDown
 } from 'lucide-react';
@@ -61,12 +61,14 @@ interface VideoConfig {
 }
 
 interface GenerationStatus {
-  status: 'idle' | 'generating' | 'processing' | 'completed' | 'failed';
+  status: 'idle' | 'generating' | 'processing' | 'completed' | 'failed' | 'quota_exceeded';
   progress: number;
   message: string;
   jobId?: string;
   videoUrl?: string;
   error?: string;
+  retryAfter?: string;
+  quotaLink?: string;
 }
 
 interface StoryboardState {
@@ -414,12 +416,29 @@ Create seamless video with talking characters, synchronized audio, professional 
 
     } catch (error) {
       console.error('Video generation error:', error);
-      setGenerationStatus({
-        status: 'failed',
-        progress: 0,
-        message: 'Failed to generate video. Please try again.',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Check for quota exceeded or rate limit errors
+      if (errorMessage.includes('Quota exceeded') || 
+          errorMessage.includes('429') || 
+          errorMessage.includes('Too Many Requests') ||
+          errorMessage.includes('RESOURCE_EXHAUSTED')) {
+        setGenerationStatus({
+          status: 'quota_exceeded',
+          progress: 0,
+          message: '🚫 VEO 3 quota exceeded. Google Cloud has reached its limit for video generation requests.',
+          error: errorMessage,
+          retryAfter: 'Please try again in a few hours or contact support to increase your quota.',
+          quotaLink: 'https://cloud.google.com/vertex-ai/docs/generative-ai/quotas-genai'
+        });
+      } else {
+        setGenerationStatus({
+          status: 'failed',
+          progress: 0,
+          message: 'Failed to generate video. Please try again.',
+          error: errorMessage
+        });
+      }
     }
   };
 
@@ -783,6 +802,10 @@ Create seamless video with talking characters, synchronized audio, professional 
                               <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
                             ) : generationStatus.status === 'completed' ? (
                               <CheckCircle className="w-6 h-6 text-green-600" />
+                            ) : generationStatus.status === 'quota_exceeded' ? (
+                              <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center">
+                                <span className="text-amber-600 font-bold text-sm">⏳</span>
+                              </div>
                             ) : (
                               <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center">
                                 <span className="text-red-600 font-bold text-sm">!</span>
@@ -851,6 +874,35 @@ Create seamless video with talking characters, synchronized audio, professional 
                                     </div>
                                   )}
 
+                                  {generationStatus.status === 'quota_exceeded' && (
+                                    <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                                      <h5 className="font-medium text-amber-800 mb-2">🚫 VEO 3 Quota Exceeded</h5>
+                                      <p className="text-sm text-amber-700 mb-3">
+                                        {generationStatus.retryAfter || 'Your Google Cloud project has reached its VEO 3 usage limit.'}
+                                      </p>
+                                      <div className="space-y-2 text-sm text-amber-700">
+                                        <p><strong>Options to resolve:</strong></p>
+                                        <ul className="list-disc list-inside space-y-1 ml-2">
+                                          <li>Wait a few hours for quota to reset</li>
+                                          <li>Request quota increase from Google Cloud</li>
+                                          <li>Try using a different Google Cloud project</li>
+                                        </ul>
+                                      </div>
+                                      {generationStatus.quotaLink && (
+                                        <div className="mt-3">
+                                          <a 
+                                            href={generationStatus.quotaLink} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center text-sm bg-amber-100 hover:bg-amber-200 text-amber-800 px-3 py-2 rounded-md transition-colors"
+                                          >
+                                            📈 Request Quota Increase
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
                                   {generationStatus.error.includes('Preview Access Required') && (
                                     <div className="mt-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
                                       <h5 className="font-medium text-purple-800 mb-2">🎬 VEO 3 Preview Access Required</h5>
@@ -907,15 +959,26 @@ Create seamless video with talking characters, synchronized audio, professional 
                       <div className="text-center">
                         <Button 
                           onClick={handleGenerateVideo}
-                          disabled={!brandInfo.name || !brandInfo.industry || !videoConfig.concept}
+                          disabled={!storyboard.plan || storyboard.plan.scenes.some(scene => !scene.selectedImageId)}
                           className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-8 py-3 text-lg"
                         >
                           <Video className="w-5 h-5 mr-2" />
                           Generate Video with VEO 3
                         </Button>
-                        <p className="text-sm text-gray-600 mt-2">
-                          Video generation typically takes 2-5 minutes
-                        </p>
+                        <div className="mt-3 text-sm">
+                          {!storyboard.plan || storyboard.plan.scenes.some(scene => !scene.selectedImageId) ? (
+                            <p className="text-amber-600 mb-2">
+                              ⚠️ Please select an image for each scene before generating video
+                            </p>
+                          ) : (
+                            <p className="text-green-600 mb-2">
+                              ✅ All scenes ready! You can generate your video now
+                            </p>
+                          )}
+                          <p className="text-gray-600">
+                            Video generation typically takes 2-5 minutes
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1163,6 +1226,7 @@ const StoryboardSelection: React.FC<StoryboardSelectionProps> = ({
   currentGeneratingScene
 }) => {
   const [editPrompts, setEditPrompts] = useState<Record<string, string>>({});
+  const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
 
   const handleEditSubmit = (sceneId: string, imageId: string) => {
     const key = `${sceneId}_${imageId}`;
@@ -1244,34 +1308,68 @@ const StoryboardSelection: React.FC<StoryboardSelectionProps> = ({
               <div className="space-y-4">
                 <h5 className="font-medium text-gray-900">Choose your favorite image:</h5>
                 
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {scene.generatedImages.map((image, imgIndex) => (
-                    <div
-                      key={image.id}
-                      className={`relative rounded-lg overflow-hidden border-2 cursor-pointer transition-all ${
-                        image.approved 
-                          ? 'border-green-500 ring-2 ring-green-200' 
-                          : 'border-gray-200 hover:border-purple-300'
-                      }`}
-                      onClick={() => onSelectImage(scene.id, image.id)}
-                    >
-                      <div className="aspect-video">
-                        <img
-                          src={image.url}
-                          alt={`Scene ${scene.sceneNumber} Option ${imgIndex + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      
-                      {image.approved && (
-                        <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1">
-                          <CheckCircle className="w-4 h-4" />
+                    <div key={image.id} className="space-y-3">
+                      {/* Larger Preview Image */}
+                      <div
+                        className={`relative rounded-lg overflow-hidden border-2 cursor-pointer transition-all group ${
+                          image.approved 
+                            ? 'border-green-500 ring-2 ring-green-200' 
+                            : 'border-gray-200 hover:border-purple-300 hover:shadow-lg'
+                        }`}
+                        onClick={() => setPreviewImage({ 
+                          url: image.url, 
+                          title: `Scene ${scene.sceneNumber} - Option ${imgIndex + 1}` 
+                        })}
+                      >
+                        <div className="aspect-[4/3] min-h-[200px]">
+                          <img
+                            src={image.url}
+                            alt={`Scene ${scene.sceneNumber} Option ${imgIndex + 1}`}
+                            className="w-full h-full object-cover"
+                          />
                         </div>
-                      )}
-                      
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
-                        <p className="text-white text-xs">Option {imgIndex + 1}</p>
+                        
+                        {/* Preview Overlay */}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                          <div className="bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-all">
+                            <Eye className="w-4 h-4 inline mr-1" />
+                            <span className="text-sm font-medium">Preview</span>
+                          </div>
+                        </div>
+                        
+                        {image.approved && (
+                          <div className="absolute top-3 right-3 bg-green-500 text-white rounded-full p-2 shadow-lg">
+                            <CheckCircle className="w-5 h-5" />
+                          </div>
+                        )}
+                        
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+                          <p className="text-white text-sm font-medium">Option {imgIndex + 1}</p>
+                          <p className="text-gray-200 text-xs">Click to preview</p>
+                        </div>
                       </div>
+                      
+                      {/* Select Button */}
+                      <Button
+                        onClick={() => onSelectImage(scene.id, image.id)}
+                        className={`w-full transition-all ${
+                          image.approved 
+                            ? 'bg-green-600 hover:bg-green-700 text-white' 
+                            : 'bg-gray-100 hover:bg-purple-600 hover:text-white text-gray-700'
+                        }`}
+                        size="sm"
+                      >
+                        {image.approved ? (
+                          <>
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Selected
+                          </>
+                        ) : (
+                          `Select Option ${imgIndex + 1}`
+                        )}
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -1306,7 +1404,7 @@ const StoryboardSelection: React.FC<StoryboardSelectionProps> = ({
                           variant="outline"
                           disabled={!editPrompts[`${scene.id}_${image.id}`]?.trim()}
                         >
-                          <Edit3 className="w-4 h-4" />
+                          Make Edits
                         </Button>
                       </div>
                     ))}
@@ -1338,6 +1436,65 @@ const StoryboardSelection: React.FC<StoryboardSelectionProps> = ({
           </div>
         )}
       </div>
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div 
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] w-full h-full">
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 text-white rounded-full p-2 z-10 transition-all"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            
+            <div className="bg-white rounded-lg overflow-hidden h-full flex flex-col">
+              <div className="bg-gray-50 px-6 py-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-900">{previewImage.title}</h3>
+              </div>
+              
+              <div className="flex-1 overflow-auto">
+                <div className="p-6 min-h-full flex items-start justify-center">
+                  <img
+                    src={previewImage.url}
+                    alt={previewImage.title}
+                    className="block rounded-lg shadow-lg cursor-grab active:cursor-grabbing"
+                    style={{ 
+                      maxWidth: 'none', 
+                      maxHeight: 'none',
+                      minWidth: 'auto',
+                      minHeight: 'auto',
+                      width: 'auto',
+                      height: 'auto'
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                  />
+                </div>
+              </div>
+              
+              <div className="bg-gray-50 px-6 py-4 border-t">
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-gray-600">
+                    <p>💡 Scroll to see full image • Click outside to close</p>
+                  </div>
+                  <Button
+                    onClick={() => setPreviewImage(null)}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Close Preview
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

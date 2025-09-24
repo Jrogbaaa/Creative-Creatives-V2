@@ -2,6 +2,34 @@
 
 All notable changes to Creative Creatives V2 will be documented in this file.
 
+## [3.1.1] - 2025-09-24 - UI/UX Enhancements & VEO 3 Error Handling
+
+### 🔧 **FIXED - Image Preview & User Experience**
+- **Image Preview Scrolling**: Fixed modal preview to allow full scrolling of large images at native resolution
+- **SVG Data URL Errors**: Resolved malformed double base64 encoding causing console `ERR_INVALID_URL` errors  
+- **VEO 3 Button Logic**: Fixed disabled state - now properly checks if all scenes have selected images
+- **Helpful Status Messages**: Added clear feedback for button states and user actions
+
+### 🚫 **ENHANCED - VEO 3 Quota Error Handling**
+- **Intelligent Error Detection**: Recognizes 429, "Quota exceeded", "Too Many Requests", and "RESOURCE_EXHAUSTED" errors
+- **User-Friendly Messages**: Clear explanations with 🚫 quota exceeded status and amber styling  
+- **Resolution Guidance**: Step-by-step options including quota reset wait times and increase requests
+- **Direct Action Links**: One-click access to Google Cloud quota increase page
+
+### 🎨 **IMPROVED - User Interface**
+- **Better Image Previews**: Full-screen modal with native image dimensions and smooth scrolling
+- **Clear Visual Feedback**: Distinct styling for quota errors vs regular errors (amber vs red)
+- **Enhanced Error States**: Comprehensive error display with helpful next steps
+- **Accessibility**: Better cursor indicators and scroll hints for image previews
+
+### 📊 **TECHNICAL IMPROVEMENTS**
+- **Robust Error Handling**: Comprehensive detection and categorization of VEO API errors
+- **Extended Type Safety**: Added `quota_exceeded` status and related fields to GenerationStatus
+- **Clean Data URLs**: Fixed placeholder image encoding to eliminate browser console errors
+- **Better UI State Management**: Improved status tracking and visual feedback system
+
+---
+
 ## [3.1.0] - 2025-09-24 - PRODUCTION-READY COMPLETION
 
 ### 🔧 **FIXED - Critical Production Issues**

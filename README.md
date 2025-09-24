@@ -515,11 +515,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🧪 **Comprehensive Testing Suite**
 
-**📊 Latest Test Results (v3.1.0):** 
+**📊 Latest Test Results (v3.1.1):** 
 - **Total Tests:** 9/9 PASSED ✅
 - **Pass Rate:** 100%  
 - **Duration:** 20.4 seconds
 - **Performance:** All APIs < 6s response
+- **UI/UX:** Image previews & error handling verified ✅
 
 ### **Test Coverage:**
 - ✅ AI Cache Service (248ms)
@@ -529,6 +530,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - ✅ Ad-blocker Compatibility 
 - ✅ Performance Under Load
 - ✅ Error Handling & CORS
+- ✅ VEO 3 Quota Error Handling
+- ✅ Image Preview Modal Scrolling
 
 ```bash
 # Run comprehensive tests
