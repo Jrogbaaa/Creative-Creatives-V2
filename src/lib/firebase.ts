@@ -6,26 +6,35 @@ import { getAnalytics } from 'firebase/analytics';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCN57SiQKUSZ-5vgVLAvdmpI89be0vXWJ4",
-  authDomain: "creative-creatives-v2.firebaseapp.com",
-  projectId: "creative-creatives-v2",
-  storageBucket: "creative-creatives-v2.firebasestorage.app",
-  messagingSenderId: "918663847472",
-  appId: "1:918663847472:web:4b111fa62f950a066717f5",
-  measurementId: "G-YBL8239S34"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyCN57SiQKUSZ-5vgVLAvdmpI89be0vXWJ4",
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "creative-creatives-v2.firebaseapp.com",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "creative-creatives-v2",
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "creative-creatives-v2.firebasestorage.app",
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "918663847472",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:918663847472:web:4b111fa62f950a066717f5",
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-YBL8239S34"
 };
 
-// Initialize Firebase
-const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
+// Only initialize Firebase if explicitly configured (NOT in production by default)
+const shouldInitializeFirebase = !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
-// Initialize Firebase services
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
-export const functions = getFunctions(app);
+// Initialize Firebase conditionally
+let app: any = null;
+if (shouldInitializeFirebase) {
+  app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
+  console.log('🔥 Firebase initialized for production/configured environment');
+} else {
+  console.log('🔧 Firebase initialization skipped - using development mode');
+}
 
-// Initialize Analytics (only in browser)
-export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
+// Initialize Firebase services conditionally
+export const auth = app ? getAuth(app) : null;
+export const db = app ? getFirestore(app) : null;
+export const storage = app ? getStorage(app) : null;
+export const functions = app ? getFunctions(app) : null;
+
+// Initialize Analytics (only in browser and if app is initialized)
+export const analytics = (app && typeof window !== 'undefined') ? getAnalytics(app) : null;
 
 // Note: Emulators disabled for production compatibility
 // Uncomment below for local development with Firebase emulators

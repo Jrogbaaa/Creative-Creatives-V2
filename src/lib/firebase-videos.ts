@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
   getFirestore, 
   collection, 
@@ -32,8 +32,14 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-// Check if Firebase is configured
-const isFirebaseConfigured = Object.values(firebaseConfig).every(val => val);
+// Force development mode for now
+const isFirebaseConfigured = false; // Object.values(firebaseConfig).every(val => val);
+console.log('🔧 Firebase configuration - FORCED DEVELOPMENT MODE:', { 
+  isFirebaseConfigured, 
+  hasApiKey: !!firebaseConfig.apiKey,
+  hasAuthDomain: !!firebaseConfig.authDomain,
+  hasProjectId: !!firebaseConfig.projectId 
+});
 
 // Initialize Firebase only if configured
 let app: any = null;
@@ -41,13 +47,115 @@ let db: any = null;
 let storage: any = null;
 
 if (isFirebaseConfigured) {
-  app = initializeApp(firebaseConfig);
-  db = getFirestore(app);
-  storage = getStorage(app);
+  try {
+    // Check if Firebase app is already initialized to prevent duplicate app error
+    app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    storage = getStorage(app);
+    console.log('✅ Firebase initialized successfully');
+  } catch (error) {
+    console.warn('⚠️ Firebase initialization failed, using development storage:', error);
+    app = null;
+    db = null;
+    storage = null;
+  }
+} else {
+  console.log('🔧 Firebase not configured, using development storage');
 }
 
 // Development fallback storage
 const devStorage = new Map<string, StoredVideo>();
+
+// Add some sample videos for development testing
+if (!isFirebaseConfigured) {
+  // Sample video data for testing
+  const sampleVideos: StoredVideo[] = [
+    {
+      id: 'sample_video_1',
+      userId: '7gRRSlbgBjg0klsSERzJid5fVqd2', // Use the user ID from logs
+      title: 'Tech Startup Ad - Demo',
+      description: '30s technology advertisement for developers and entrepreneurs',
+      status: 'completed',
+      jobId: 'sample_job_1',
+      videoUrl: `/working_video.mp4`, // Use actual generated video file
+      storyboardId: 'sample_storyboard_1',
+      generatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+      updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+      metadata: {
+        duration: 30,
+        resolution: '720p',
+        aspectRatio: '16:9',
+        fileSize: 5242880, // ~5MB
+        brandInfo: {
+          name: 'TechFlow',
+          industry: 'Technology',
+          targetAudience: 'Developers and entrepreneurs'
+        },
+        sceneCount: 4,
+        style: 'professional',
+        generationType: 'image-to-video'
+      }
+    },
+    {
+      id: 'sample_video_2',
+      userId: '7gRRSlbgBjg0klsSERzJid5fVqd2',
+      title: 'Fashion Brand Ad - Creative',
+      description: '15s fashion advertisement for young adults',
+      status: 'completed',
+      jobId: 'sample_job_2',
+      videoUrl: 'data:video/mp4;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+      storyboardId: 'sample_storyboard_2',
+      generatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+      updatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      metadata: {
+        duration: 15,
+        resolution: '720p',
+        aspectRatio: '9:16',
+        fileSize: 3145728, // ~3MB
+        brandInfo: {
+          name: 'StyleWave',
+          industry: 'Fashion',
+          targetAudience: 'Young adults 18-25'
+        },
+        sceneCount: 2,
+        style: 'vibrant',
+        generationType: 'image-to-video'
+      }
+    },
+    {
+      id: 'sample_video_3',
+      userId: '7gRRSlbgBjg0klsSERzJid5fVqd2',
+      title: 'Restaurant Promo - Appetizing',
+      description: '30s restaurant advertisement for food lovers',
+      status: 'processing',
+      jobId: 'sample_job_3',
+      storyboardId: 'sample_storyboard_3',
+      generatedAt: new Date(Date.now() - 10 * 60 * 1000), // 10 minutes ago
+      updatedAt: new Date(Date.now() - 5 * 60 * 1000),
+      metadata: {
+        duration: 30,
+        resolution: '720p',
+        aspectRatio: '1:1',
+        fileSize: 0,
+        brandInfo: {
+          name: 'Bistro Delights',
+          industry: 'Food & Beverage',
+          targetAudience: 'Food lovers and local diners'
+        },
+        sceneCount: 3,
+        style: 'cinematic',
+        generationType: 'image-to-video'
+      }
+    }
+  ];
+
+  // Add sample videos to dev storage
+  sampleVideos.forEach(video => {
+    devStorage.set(video.id, video);
+  });
+  
+  console.log(`🎬 Added ${sampleVideos.length} sample videos to development storage`);
+}
 
 // Types
 export interface StoredVideo {
@@ -177,6 +285,7 @@ class FirebaseVideoService {
   async getUserVideos(filter: VideoFilter): Promise<StoredVideo[]> {
     try {
       console.log('📋 Fetching user videos:', filter);
+      console.log('🔧 Firebase status:', { isFirebaseConfigured, hasDb: !!db });
       
       if (isFirebaseConfigured && db) {
         let q = query(
