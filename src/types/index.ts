@@ -219,10 +219,25 @@ export interface StoryboardPlan {
   projectId: string;
   totalDuration: number; // 30 seconds total
   scenes: StoryboardScene[];
+  platformOptimization: {
+    primaryPlatform: string;
+    aspectRatio: string;
+    duration: string;
+    pacing: string;
+    interactionElements: string[];
+  };
+  advertisingEffectiveness: {
+    hookStrategy: string;
+    emotionalArc: string;
+    personalizedElements: string;
+    shareabilityFactor: string;
+    callToActionPower: string;
+  };
   visualConsistency: {
     characters: string[];
     colorPalette: string[];
     style: string;
+    cinematographicTheme: string;
   };
   narrative: {
     hook: string;

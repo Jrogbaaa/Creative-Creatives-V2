@@ -65,7 +65,7 @@ class MarcusStoryboardService {
     const { brandInfo, chatContext, adGoals, targetDuration } = request;
     
     return `
-As Marcus, a world-renowned creative director, I need you to create a professional advertisement storyboard plan.
+As Marcus, an elite creative director with mastery in cinematography and advertising effectiveness science, I need you to create a professional video advertisement storyboard that combines visual excellence with research-backed effectiveness strategies.
 
 BRAND CONTEXT:
 - Brand: ${brandInfo.name}
@@ -83,15 +83,40 @@ AD REQUIREMENTS:
 - Format: Professional commercial advertisement
 
 STORYBOARD TASK:
-Plan a ${targetDuration}-second advertisement with 2-4 scenes. For each scene, specify:
+Plan a ${targetDuration}-second advertisement with 2-4 scenes using elite cinematographic principles. For each scene, specify:
 
 1. Scene duration (4, 6, or 8 seconds - must total ${targetDuration})
 2. Scene purpose (hook, problem, solution, call-to-action)
-3. Visual description for image generation
-4. Professional Nano Banana prompt
-5. Camera angle and mood
+3. Cinematographic approach using Sergio Leone techniques:
+   - Camera movement (deliberate dolly/crane vs. slow zoom for tension)
+   - Shot contrast (extreme close-up vs. wide shot juxtaposition)
+   - Lighting strategy (harsh naturalistic, expressionistic, dramatic)
+   - Compositional style (painterly framing, environmental storytelling)
+4. Professional Nano Banana prompt with cinematographic details
+5. Precise camera work and visual mood
 
-Ensure visual consistency across scenes (same actors, lighting style, brand colors).
+CINEMATOGRAPHIC & ADVERTISING EFFECTIVENESS GUIDELINES:
+
+**Elite Cinematography (Sergio Leone Mastery):**
+- Apply "Contrast is King": Use extreme wide shots paired with extreme close-ups for visual tension
+- "Movement with Purpose": Every camera movement must serve the story and build emotion  
+- "Light as Drama": Use lighting to create mood, atmosphere, and narrative depth
+- "Patience in Pacing": Allow shots to breathe and build tension gradually, especially in longer scenes
+- "Compositional Precision": Frame each shot like a masterpiece painting
+- "Environmental Storytelling": Use setting and landscape as active narrative participants
+
+**Research-Backed Video Ad Effectiveness:**
+- **Critical Opening 3 Seconds**: Hook attention immediately with compelling visuals or intrigue
+- **Platform Optimization**: Tailor aspect ratio and pacing for target platform:
+  * Instagram/TikTok: Vertical (9:16), fast-paced, mobile-optimized
+  * YouTube: Horizontal (16:9), longer form, deeper storytelling
+  * Facebook: Square (1:1) or horizontal, shareable content focus
+- **Emotional Storytelling Priority**: Video is the most effective medium for complex emotional messages
+- **Social Interaction Design**: Include elements that encourage likes, shares, comments
+- **Personalization Without Invasion**: Relevant to audience without feeling creepy or overly targeted
+- **Multi-Platform Synergy**: Ensure consistent brand message across all intended platforms
+
+Ensure visual consistency and cinematic excellence across scenes (same actors, lighting style, brand colors, camera quality).
 
 Respond in this exact JSON format:
 {
@@ -109,17 +134,34 @@ Respond in this exact JSON format:
       "duration": 6,
       "prompt": "Professional image generation prompt",
       "visualStyle": {
-        "lighting": "natural/dramatic/soft",
-        "mood": "confident/urgent/inspiring",
-        "cameraAngle": "close-up/wide-shot/medium",
-        "composition": "centered/rule-of-thirds/dynamic"
+        "lighting": "harsh-naturalistic/expressionistic/dramatic-contrast/soft",
+        "mood": "confident/urgent/inspiring/tense/contemplative",
+        "cameraAngle": "extreme-close-up/wide-shot/medium/bird's-eye/low-angle",
+        "composition": "painterly-centered/rule-of-thirds/juxtaposition-contrast/environmental-storytelling",
+        "cameraMovement": "static/slow-zoom/deliberate-dolly/crane-shot/handheld",
+        "cinematographyTechnique": "Leone-juxtaposition/psychological-intensity/environmental-character/light-as-drama"
       }
     }
   ],
+  "platformOptimization": {
+    "primaryPlatform": "Instagram/TikTok/YouTube/Facebook",
+    "aspectRatio": "9:16/16:9/1:1",
+    "duration": "${targetDuration} seconds",
+    "pacing": "fast-mobile/medium-desktop/slow-cinematic",
+    "interactionElements": ["What encourages likes/shares/comments"]
+  },
+  "advertisingEffectiveness": {
+    "hookStrategy": "How the first 3 seconds grab attention",
+    "emotionalArc": "How emotion builds throughout the ad",
+    "personalizedElements": "Audience-relevant details without being invasive",
+    "shareabilityFactor": "What makes this likely to be shared",
+    "callToActionPower": "Why the CTA will drive action"
+  },
   "visualConsistency": {
     "characters": ["main character description"],
     "colorPalette": ["brand color", "accent color"],
-    "style": "overall visual style"
+    "style": "overall visual style",
+    "cinematographicTheme": "Consistent visual theme across scenes"
   }
 }
 `;
@@ -241,10 +283,25 @@ Respond in this exact JSON format:
         projectId: 'temp', // Will be updated when project is created
         totalDuration: adjustedScenes.reduce((total, scene) => total + scene.duration, 0),
         scenes: adjustedScenes,
+        platformOptimization: parsedResponse.platformOptimization || {
+          primaryPlatform: "Instagram",
+          aspectRatio: "9:16",
+          duration: `${request.targetDuration} seconds`,
+          pacing: "fast-mobile",
+          interactionElements: ["Strong visual hooks", "Clear brand messaging"]
+        },
+        advertisingEffectiveness: parsedResponse.advertisingEffectiveness || {
+          hookStrategy: "Immediate visual impact in first 3 seconds",
+          emotionalArc: "Build from curiosity to desire to action",
+          personalizedElements: `Relevant to ${request.brandInfo.targetAudience}`,
+          shareabilityFactor: "Memorable visual storytelling",
+          callToActionPower: "Clear next step for audience engagement"
+        },
         visualConsistency: parsedResponse.visualConsistency || {
           characters: [`Professional representing ${request.brandInfo.targetAudience}`],
           colorPalette: request.brandInfo.colorPalette || ["#3B82F6", "#F8FAFC"],
-          style: `${request.brandInfo.brandVoice} commercial style`
+          style: `${request.brandInfo.brandVoice} commercial style`,
+          cinematographicTheme: "Cinematic storytelling with professional polish"
         },
         narrative: parsedResponse.narrative || {
           hook: "Brand introduction",
@@ -638,10 +695,25 @@ Respond in this exact JSON format:
       projectId: 'temp',
       totalDuration: fallbackScenes.reduce((total, scene) => total + scene.duration, 0),
       scenes: fallbackScenes,
+      platformOptimization: {
+        primaryPlatform: "Instagram",
+        aspectRatio: "9:16",
+        duration: `${request.targetDuration} seconds`,
+        pacing: "fast-mobile",
+        interactionElements: ["Strong opening hook", "Clear problem-solution narrative", "Compelling CTA"]
+      },
+      advertisingEffectiveness: {
+        hookStrategy: "Immediate problem identification in first 3 seconds",
+        emotionalArc: "Problem frustration → solution relief → success satisfaction",
+        personalizedElements: `Tailored for ${industry} professionals`,
+        shareabilityFactor: "Relatable workplace challenges and transformations",
+        callToActionPower: "Clear value proposition with immediate next step"
+      },
       visualConsistency: {
         characters: ["professional business person", "diverse team members"],
         colorPalette: [request.brandInfo.colorPalette?.[0] || "#3B82F6", "#F8FAFC", "#1F2937"],
-        style: "modern corporate"
+        style: "modern corporate",
+        cinematographicTheme: "Professional documentary style with dynamic transitions"
       },
       narrative: {
         hook: `${industry} professionals waste hours on manual tasks`,
@@ -716,10 +788,25 @@ Respond in this exact JSON format:
       projectId: 'temp',
       totalDuration: targetDuration,
       scenes,
+      platformOptimization: {
+        primaryPlatform: "Instagram",
+        aspectRatio: "9:16",
+        duration: `${targetDuration} seconds`,
+        pacing: "medium-mobile",
+        interactionElements: ["Engaging hook", "Clear brand messaging", "Strong CTA"]
+      },
+      advertisingEffectiveness: {
+        hookStrategy: "Relatable opening scenario captures attention",
+        emotionalArc: "Curiosity → understanding → motivation to act",
+        personalizedElements: `Content relevant to ${brandInfo.targetAudience}`,
+        shareabilityFactor: `Professional ${brandInfo.industry} content`,
+        callToActionPower: "Clear next step with brand value proposition"
+      },
       visualConsistency: {
         characters: [`Professional person representing ${brandInfo.targetAudience}`],
         colorPalette: brandInfo.colorPalette.length > 0 ? brandInfo.colorPalette : ["#4F46E5", "#059669"],
-        style: `${brandInfo.brandVoice} commercial photography style`
+        style: `${brandInfo.brandVoice} commercial photography style`,
+        cinematographicTheme: "Clean commercial aesthetic with professional polish"
       },
       narrative: {
         hook: "Capture attention with relatable scenario",
