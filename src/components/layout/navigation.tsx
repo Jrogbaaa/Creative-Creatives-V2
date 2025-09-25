@@ -4,7 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/providers/auth-provider';
 import { AuthModal } from '@/components/auth/auth-modal';
-import { Sparkles, Menu, X } from 'lucide-react';
+import { Sparkles, Menu, X, Video, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -57,8 +57,17 @@ export const Navigation: React.FC = () => {
           <div className="hidden md:flex items-center space-x-4">
             {user ? (
               <>
-                <Link href="/dashboard">
-                  <Button variant="ghost">Dashboard</Button>
+                <Link href="/create">
+                  <Button variant="ghost" className="flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    Create Video
+                  </Button>
+                </Link>
+                <Link href="/gallery">
+                  <Button variant="ghost" className="flex items-center gap-2">
+                    <Video className="w-4 h-4" />
+                    Gallery
+                  </Button>
                 </Link>
                 <Button
                   variant="outline"
@@ -125,9 +134,16 @@ export const Navigation: React.FC = () => {
               <div className="pt-4 border-t border-gray-200">
                 {user ? (
                   <>
-                    <Link href="/dashboard" className="block mb-2">
-                      <Button variant="ghost" className="w-full justify-start">
-                        Dashboard
+                    <Link href="/create" className="block mb-2">
+                      <Button variant="ghost" className="w-full justify-start flex items-center gap-2">
+                        <Plus className="w-4 h-4" />
+                        Create Video
+                      </Button>
+                    </Link>
+                    <Link href="/gallery" className="block mb-2">
+                      <Button variant="ghost" className="w-full justify-start flex items-center gap-2">
+                        <Video className="w-4 h-4" />
+                        Gallery
                       </Button>
                     </Link>
                     <Button

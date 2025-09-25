@@ -9,7 +9,14 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const { jobId } = params;
+    let { jobId } = params;
+    
+    // Handle URL-encoded jobId (decode if necessary)
+    if (jobId) {
+      jobId = decodeURIComponent(jobId);
+    }
+    
+    console.log('🔍 Video status check for jobId:', jobId);
     
     if (!jobId) {
       return NextResponse.json(

@@ -142,6 +142,15 @@ export interface VeoGenerationRequest {
   style?: string;
   camera?: string;
   lighting?: string;
+  // Image-to-video support
+  imageUrl?: string; // Base64 data URI or GCS URI
+  imageBytes?: string; // Base64 encoded image data
+  mimeType?: string; // e.g., 'image/png', 'image/jpeg'
+  // Enhanced VEO3 parameters
+  resolution?: '720p' | '1080p';
+  personGeneration?: 'allow_adult' | 'allow_minor' | 'block_person';
+  enhancePrompt?: boolean;
+  generateAudio?: boolean;
 }
 
 // Legacy Imagen (deprecated)

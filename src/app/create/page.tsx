@@ -43,6 +43,7 @@ import {
   MarcusStoryboardRequest,
   ChatMessage
 } from '@/types';
+import { firebaseVideos, convertBase64ToSize } from '@/lib/firebase-videos';
 
 interface BrandInfo {
   name: string;
@@ -335,7 +336,7 @@ const CreateAdPage: React.FC = () => {
       setGenerationStatus({
         status: 'generating',
         progress: 10,
-        message: 'Creating video from your storyboard...'
+        message: 'Starting image-to-video generation...'
       });
 
       if (!storyboard.plan) {
@@ -377,11 +378,32 @@ NARRATIVE: ${storyboard.plan.narrative.hook} → ${storyboard.plan.narrative.sol
 Create seamless video with talking characters, synchronized audio, professional sound effects, and smooth transitions between scenes.
       `.trim();
 
+      // For image-to-video generation, use the first selected scene's image
+      const firstScene = selectedScenes[0];
+      const selectedImage = firstScene.selectedImage;
+
+      if (!selectedImage) {
+        throw new Error('No selected image found for video generation');
+      }
+
+      console.log('🎬 Starting image-to-video generation with:', {
+        sceneCount: selectedScenes.length,
+        firstSceneImage: selectedImage.id,
+        duration: videoConfig.duration
+      });
+
       const veoRequest: VeoGenerationRequest = {
         prompt: storyboardPrompt,
         duration: videoConfig.duration,
         aspectRatio: videoConfig.aspectRatio,
-        style: videoConfig.style
+        style: videoConfig.style,
+        // Image-to-video parameters
+        imageUrl: selectedImage.url, // Base64 data URI from Nano Banana
+        mimeType: 'image/png',
+        resolution: '720p',
+        personGeneration: 'allow_adult',
+        enhancePrompt: true,
+        generateAudio: true
       };
 
       const response = await fetch('/api/generate-video', {
@@ -407,7 +429,7 @@ Create seamless video with talking characters, synchronized audio, professional 
       setGenerationStatus({
         status: 'processing',
         progress: 30,
-        message: 'VEO 3 is creating your video...',
+        message: 'VEO 3 is creating video from your storyboard image...',
         jobId
       });
 
@@ -442,6 +464,53 @@ Create seamless video with talking characters, synchronized audio, professional 
     }
   };
 
+  const saveVideoToFirebase = async (jobId: string, videoUrl: string) => {
+    try {
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      console.log('💾 Saving video to Firebase for user:', user.uid);
+      
+      // Calculate file size from base64 data
+      const fileSize = convertBase64ToSize(videoUrl);
+      
+      // Create video metadata
+      const videoData = {
+        userId: user.uid,
+        title: `${brandInfo.name} Ad - ${new Date().toLocaleDateString()}`,
+        description: `${videoConfig.duration}s ${brandInfo.industry} advertisement for ${brandInfo.targetAudience}`,
+        status: 'completed' as const,
+        jobId: jobId,
+        videoUrl: videoUrl, // Store base64 data URI initially
+        storyboardId: storyboard.plan?.id,
+        metadata: {
+          duration: videoConfig.duration,
+          resolution: '720p',
+          aspectRatio: videoConfig.aspectRatio,
+          fileSize: fileSize,
+          brandInfo: {
+            name: brandInfo.name,
+            industry: brandInfo.industry,
+            targetAudience: brandInfo.targetAudience
+          },
+          sceneCount: storyboard.plan?.scenes.length || 1,
+          style: videoConfig.style,
+          generationType: 'image-to-video'
+        }
+      };
+
+      // Save to Firebase
+      const videoId = await firebaseVideos.saveVideo(videoData);
+      console.log('✅ Video saved to Firebase with ID:', videoId);
+      
+      return videoId;
+    } catch (error) {
+      console.error('❌ Failed to save video to Firebase:', error);
+      throw error;
+    }
+  };
+
   const pollVideoStatus = async (jobId: string) => {
     const maxAttempts = 30; // 5 minutes max
     let attempts = 0;
@@ -450,44 +519,109 @@ Create seamless video with talking characters, synchronized audio, professional 
       attempts++;
       
       try {
-        const response = await fetch(`/api/video-status/${jobId}`);
+        const encodedJobId = encodeURIComponent(jobId);
+        console.log('🔍 Polling video status for jobId:', jobId);
+        console.log('🔗 Encoded URL:', `/api/video-status/${encodedJobId}`);
+        
+        const response = await fetch(`/api/video-status/${encodedJobId}`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const data = await response.json();
+        console.log('📊 Video status response:', data);
         
         const progressPercentage = Math.min(30 + (attempts * 2), 90);
         
+        // Check for completion first
         if (data.status === 'completed' && data.videoUrl) {
-          setGenerationStatus({
-            status: 'completed',
-            progress: 100,
-            message: 'Your video ad is ready!',
-            jobId,
-            videoUrl: data.videoUrl
-          });
-          return;
+          console.log('✅ Video generation completed! Saving to Firebase...');
+          
+          try {
+            // Save completed video to Firebase
+            await saveVideoToFirebase(jobId, data.videoUrl);
+            
+            setGenerationStatus({
+              status: 'completed',
+              progress: 100,
+              message: 'Your video ad is ready and saved!',
+              jobId,
+              videoUrl: data.videoUrl
+            });
+          } catch (firebaseError) {
+            console.warn('⚠️ Firebase save failed, but video is ready:', firebaseError);
+            setGenerationStatus({
+              status: 'completed',
+              progress: 100,
+              message: 'Your video ad is ready! (Note: Could not save to library)',
+              jobId,
+              videoUrl: data.videoUrl
+            });
+          }
+          
+          return; // Stop polling
         }
         
-        if (data.status === 'failed') {
+        // Check for failure
+        if (data.status === 'failed' || data.error) {
+          console.log('❌ Video generation failed:', data.error);
           throw new Error(data.error || 'Video generation failed');
         }
         
+        // Update progress for processing status
         setGenerationStatus(prev => ({
           ...prev,
           progress: progressPercentage,
-          message: 'VEO 3 is processing your video...'
+          message: data.message || 'VEO 3 is processing your video...'
         }));
         
-        if (attempts < maxAttempts) {
+        // Continue polling if still processing and under max attempts
+        if (attempts < maxAttempts && (data.status === 'processing' || data.status === 'pending')) {
+          console.log(`🔄 Poll attempt ${attempts}/${maxAttempts} - Status: ${data.status}`);
           setTimeout(poll, 10000); // Poll every 10 seconds
-        } else {
+        } else if (attempts >= maxAttempts) {
+          console.log('⏰ Polling timeout reached');
           throw new Error('Video generation timed out');
+        } else {
+          console.log('🏁 Polling stopped - unexpected status:', data.status);
+          throw new Error(`Unexpected status: ${data.status}`);
         }
       } catch (error) {
-        setGenerationStatus({
-          status: 'failed',
-          progress: 0,
-          message: 'Video generation failed',
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
+        console.error('❌ Video status polling error:', error);
+        
+        // Handle specific browser extension conflicts
+        if (error instanceof Error) {
+          if (error.message.includes('ERR_BLOCKED_BY_CONTENT_BLOCKER')) {
+            setGenerationStatus({
+              status: 'failed',
+              progress: 0,
+              message: 'Content blocker interference - please disable ad blockers',
+              error: 'Content blocker or browser extension blocking API requests'
+            });
+          } else if (error.message.includes('disconnected port')) {
+            // Ignore proxy extension errors, continue polling
+            console.log('🔧 Browser extension conflict detected, continuing...');
+            if (attempts < maxAttempts) {
+              setTimeout(poll, 10000);
+            }
+            return;
+          } else {
+            setGenerationStatus({
+              status: 'failed',
+              progress: 0,
+              message: 'Video generation failed',
+              error: error.message
+            });
+          }
+        } else {
+          setGenerationStatus({
+            status: 'failed',
+            progress: 0,
+            message: 'Video generation failed',
+            error: 'Unknown error occurred'
+          });
+        }
       }
     };
 

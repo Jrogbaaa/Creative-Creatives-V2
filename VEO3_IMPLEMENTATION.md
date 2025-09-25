@@ -184,7 +184,7 @@ GOOGLE_CLOUD_PRIVATE_KEY=your-service-account-private-key
 - **Authentication**: ✅ Perfect (access tokens generated successfully)
 - **Permissions**: ✅ Fixed (aiplatform.endpoints.predict granted)
 - **Preview Access**: ✅ Confirmed (can access VEO 3 documentation)
-- **Quota**: ⚠️ May need increase for heavy usage
+- **Quota**: ✅ Approved (100 long-running requests per minute)
 
 ### 🚀 **Ready for Production**
 The VEO 3 video ad creator is **fully functional** and ready for users. The "New Ad" button now leads to a complete video generation experience at `/create`.

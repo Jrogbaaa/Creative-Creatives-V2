@@ -9,7 +9,10 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test:e2e": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug"
   },
   "dependencies": {
     "@google-cloud/aiplatform": "^3.12.0",
@@ -44,7 +47,7 @@
     "cmdk": "^0.2.0",
     "date-fns": "^3.0.6",
     "dotenv": "^17.2.2",
-    "firebase": "^10.7.1",
+    "firebase": "^10.14.1",
     "firebase-admin": "^12.7.0",
     "framer-motion": "^10.16.16",
     "lucide-react": "^0.302.0",

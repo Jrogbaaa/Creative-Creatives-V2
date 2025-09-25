@@ -203,26 +203,54 @@ Respond in this exact JSON format:
         parsedResponse = this.createIntelligentFallback(request, response);
       }
       
-      // Convert to StoryboardPlan format
-      const scenes: StoryboardScene[] = parsedResponse.scenes.map((scene: any, index: number) => ({
+      // Convert to StoryboardPlan format with validation
+      const rawScenes = parsedResponse.scenes || [];
+      console.log(`🔍 [Marcus] Processing ${rawScenes.length} raw scenes`);
+      
+      // Limit scenes based on target duration
+      const maxScenes = request.targetDuration <= 15 ? 3 : 4;
+      const limitedScenes = rawScenes.slice(0, maxScenes);
+      
+      const scenes: StoryboardScene[] = limitedScenes.map((scene: any, index: number) => ({
         id: `scene_${Date.now()}_${index}`,
         sceneNumber: scene.sceneNumber || index + 1,
-        title: scene.title,
-        description: scene.description,
-        duration: scene.duration,
-        prompt: scene.prompt,
+        title: scene.title || `Scene ${index + 1}`,
+        description: scene.description || `Professional scene for ${request.brandInfo.name}`,
+        duration: this.validateSceneDuration(scene.duration, request.targetDuration, limitedScenes.length, index),
+        prompt: scene.prompt || this.generatePromptFromDescription(scene.description || `Scene ${index + 1}`, request.brandInfo),
         generatedImages: [],
         selectedImageId: undefined,
-        visualStyle: scene.visualStyle
+        visualStyle: scene.visualStyle || {
+          lighting: "natural",
+          mood: "professional",
+          cameraAngle: "medium", 
+          composition: "centered"
+        }
       }));
+
+      // Ensure total duration doesn't exceed target
+      const totalDuration = scenes.reduce((total, scene) => total + scene.duration, 0);
+      const adjustedScenes = totalDuration > request.targetDuration 
+        ? this.adjustSceneDurations(scenes, request.targetDuration)
+        : scenes;
+
+      console.log(`✅ [Marcus] Created ${adjustedScenes.length} scenes with total duration: ${adjustedScenes.reduce((t, s) => t + s.duration, 0)}s`);
 
       const storyboardPlan: StoryboardPlan = {
         id: `storyboard_${Date.now()}`,
         projectId: 'temp', // Will be updated when project is created
-        totalDuration: scenes.reduce((total, scene) => total + scene.duration, 0),
-        scenes,
-        visualConsistency: parsedResponse.visualConsistency,
-        narrative: parsedResponse.narrative,
+        totalDuration: adjustedScenes.reduce((total, scene) => total + scene.duration, 0),
+        scenes: adjustedScenes,
+        visualConsistency: parsedResponse.visualConsistency || {
+          characters: [`Professional representing ${request.brandInfo.targetAudience}`],
+          colorPalette: request.brandInfo.colorPalette || ["#3B82F6", "#F8FAFC"],
+          style: `${request.brandInfo.brandVoice} commercial style`
+        },
+        narrative: parsedResponse.narrative || {
+          hook: "Brand introduction",
+          solution: "Value proposition", 
+          callToAction: "Get started today"
+        },
         createdBy: 'marcus',
         createdAt: new Date()
       };
@@ -254,13 +282,64 @@ Respond in this exact JSON format:
    * Validate storyboard structure
    */
   private validateStoryboardStructure(obj: any): boolean {
-    return obj && 
-           typeof obj === 'object' &&
-           obj.scenes && 
-           Array.isArray(obj.scenes) && 
-           obj.scenes.length > 0 &&
-           obj.narrative &&
-           typeof obj.narrative === 'object';
+    if (!obj || typeof obj !== 'object') {
+      return false;
+    }
+    
+    if (!obj.scenes || !Array.isArray(obj.scenes) || obj.scenes.length === 0) {
+      return false;
+    }
+    
+    // Check if we have too many scenes (indicates parsing error)
+    if (obj.scenes.length > 6) {
+      console.log(`⚠️ [Marcus] Too many scenes detected: ${obj.scenes.length}, likely parsing error`);
+      return false;
+    }
+    
+    return true;
+  }
+
+  /**
+   * Validate and adjust scene duration
+   */
+  private validateSceneDuration(duration: any, targetDuration: number, totalScenes: number, sceneIndex: number): number {
+    const optimalDuration = Math.floor(targetDuration / totalScenes);
+    
+    // If duration is invalid or missing, use optimal duration
+    if (typeof duration !== 'number' || duration <= 0 || duration > targetDuration) {
+      return optimalDuration;
+    }
+    
+    // Ensure duration is reasonable (between 2 and target duration)
+    return Math.min(Math.max(duration, 2), targetDuration);
+  }
+
+  /**
+   * Adjust scene durations to fit target duration
+   */
+  private adjustSceneDurations(scenes: StoryboardScene[], targetDuration: number): StoryboardScene[] {
+    const totalCurrentDuration = scenes.reduce((total, scene) => total + scene.duration, 0);
+    
+    if (totalCurrentDuration <= targetDuration) {
+      return scenes;
+    }
+    
+    console.log(`🔧 [Marcus] Adjusting scene durations: ${totalCurrentDuration}s → ${targetDuration}s`);
+    
+    // Proportionally reduce all scene durations
+    const ratio = targetDuration / totalCurrentDuration;
+    let remainingDuration = targetDuration;
+    
+    return scenes.map((scene, index) => {
+      if (index === scenes.length - 1) {
+        // Last scene gets remaining duration
+        return { ...scene, duration: Math.max(remainingDuration, 2) };
+      } else {
+        const adjustedDuration = Math.max(Math.floor(scene.duration * ratio), 2);
+        remainingDuration -= adjustedDuration;
+        return { ...scene, duration: adjustedDuration };
+      }
+    });
   }
 
   /**
@@ -320,53 +399,67 @@ Respond in this exact JSON format:
   }
 
   /**
-   * Extract scene information from free text
+   * Extract scene information from free text with improved logic
    */
   private extractScenesFromText(text: string, request: MarcusStoryboardRequest): any[] {
-    const sceneKeywords = ['scene', 'shot', 'opening', 'hook', 'solution', 'call to action', 'cta'];
-    const lines = text.split('\n').filter(line => line.trim().length > 0);
+    console.log('🔍 [Marcus] Extracting scenes from text, target duration:', request.targetDuration);
     
+    // Calculate optimal scene count based on duration
+    const maxScenes = request.targetDuration <= 15 ? 3 : 4;
+    const optimalDuration = Math.floor(request.targetDuration / maxScenes);
+    
+    // First, try to find properly structured scenes
+    const structuredScenes = this.extractStructuredScenes(text, request, maxScenes, optimalDuration);
+    if (structuredScenes.length > 0 && structuredScenes.length <= maxScenes) {
+      console.log(`✅ [Marcus] Found ${structuredScenes.length} structured scenes`);
+      return structuredScenes;
+    }
+    
+    // Fallback to creating default scenes
+    console.log(`⚠️ [Marcus] Using default scenes for ${request.targetDuration}s duration`);
+    return this.createDefaultScenes(request);
+  }
+
+  /**
+   * Extract properly structured scenes from text
+   */
+  private extractStructuredScenes(text: string, request: MarcusStoryboardRequest, maxScenes: number, optimalDuration: number): any[] {
     const scenes = [];
-    let currentScene = null;
+    const scenePatterns = [
+      /scene\s*(\d+)[:\-\s]+(.*?)(?=scene\s*\d+|$)/gi,
+      /(\d+)\.?\s*\*?\*?(scene|shot|hook|solution|call.to.action)[:\-\s]+(.*?)(?=\d+\.|$)/gi
+    ];
     
-    for (const line of lines) {
-      const lowerLine = line.toLowerCase();
+    for (const pattern of scenePatterns) {
+      const matches = [...text.matchAll(pattern)];
       
-      // Check if this line might be starting a new scene
-      if (sceneKeywords.some(keyword => lowerLine.includes(keyword))) {
-        if (currentScene) {
-          scenes.push(currentScene);
-        }
-        
-        currentScene = {
-          sceneNumber: scenes.length + 1,
-          title: this.extractSceneTitle(line),
-          description: line.trim(),
-          duration: Math.floor(request.targetDuration / 3), // Default split
-          prompt: this.generatePromptFromDescription(line, request.brandInfo),
-          visualStyle: {
-            lighting: "natural",
-            mood: "professional",
-            cameraAngle: "medium",
-            composition: "balanced"
+      if (matches.length > 0 && matches.length <= maxScenes) {
+        matches.forEach((match, index) => {
+          const sceneText = match[2] || match[3] || match[1];
+          if (sceneText && sceneText.length > 10) {
+            scenes.push({
+              sceneNumber: index + 1,
+              title: this.extractSceneTitle(sceneText),
+              description: sceneText.trim().substring(0, 150),
+              duration: optimalDuration,
+              prompt: this.generatePromptFromDescription(sceneText, request.brandInfo),
+              visualStyle: {
+                lighting: "natural",
+                mood: "professional", 
+                cameraAngle: "medium",
+                composition: "centered"
+              }
+            });
           }
-        };
-      } else if (currentScene && line.trim().length > 20) {
-        // Add to current scene description
-        currentScene.description += ' ' + line.trim();
+        });
+        
+        if (scenes.length > 0) {
+          break; // Stop after finding valid scenes
+        }
       }
     }
     
-    if (currentScene) {
-      scenes.push(currentScene);
-    }
-    
-    // If no scenes extracted, create default structure
-    if (scenes.length === 0) {
-      return this.createDefaultScenes(request);
-    }
-    
-    return scenes;
+    return scenes.slice(0, maxScenes); // Ensure we don't exceed max scenes
   }
 
   /**
@@ -415,34 +508,76 @@ Respond in this exact JSON format:
    * Create default scenes when extraction fails
    */
   private createDefaultScenes(request: MarcusStoryboardRequest): any[] {
-    const sceneDuration = Math.floor(request.targetDuration / 3);
+    const { targetDuration } = request;
     
-    return [
-      {
-        sceneNumber: 1,
-        title: "Hook",
-        description: "Attention-grabbing opening",
-        duration: sceneDuration,
-        prompt: `Professional opening scene for ${request.brandInfo.name}, ${request.brandInfo.brandVoice} style`,
-        visualStyle: { lighting: "natural", mood: "engaging", cameraAngle: "medium", composition: "centered" }
-      },
-      {
-        sceneNumber: 2,
-        title: "Solution", 
-        description: "Brand solution presentation",
-        duration: sceneDuration,
-        prompt: `${request.brandInfo.name} solution showcase, professional ${request.brandInfo.industry} setting`,
-        visualStyle: { lighting: "bright", mood: "confident", cameraAngle: "close-up", composition: "rule-of-thirds" }
-      },
-      {
-        sceneNumber: 3,
-        title: "Call to Action",
-        description: "Final call to action", 
-        duration: sceneDuration,
-        prompt: `Call-to-action for ${request.brandInfo.name}, inspiring conclusion`,
-        visualStyle: { lighting: "warm", mood: "inspiring", cameraAngle: "wide-shot", composition: "dynamic" }
-      }
-    ];
+    // Smart scene count based on duration
+    if (targetDuration <= 15) {
+      // 15 seconds: 2-3 scenes (5-7 seconds each)
+      const sceneDuration = Math.floor(targetDuration / 3);
+      return [
+        {
+          sceneNumber: 1,
+          title: "Hook",
+          description: "Attention-grabbing opening that introduces the brand",
+          duration: sceneDuration,
+          prompt: `Professional opening scene for ${request.brandInfo.name}, ${request.brandInfo.brandVoice} style, ${request.brandInfo.industry} setting`,
+          visualStyle: { lighting: "natural", mood: "engaging", cameraAngle: "medium", composition: "centered" }
+        },
+        {
+          sceneNumber: 2,
+          title: "Solution", 
+          description: "Brand solution presentation and key benefits",
+          duration: sceneDuration,
+          prompt: `${request.brandInfo.name} solution showcase, professional ${request.brandInfo.industry} setting, highlighting benefits`,
+          visualStyle: { lighting: "bright", mood: "confident", cameraAngle: "close-up", composition: "rule-of-thirds" }
+        },
+        {
+          sceneNumber: 3,
+          title: "Call to Action",
+          description: "Final call to action with brand logo", 
+          duration: targetDuration - (sceneDuration * 2), // Use remaining time
+          prompt: `Call-to-action for ${request.brandInfo.name}, inspiring conclusion with brand logo`,
+          visualStyle: { lighting: "warm", mood: "inspiring", cameraAngle: "wide-shot", composition: "dynamic" }
+        }
+      ];
+    } else {
+      // 30 seconds: 4 scenes (6-8 seconds each)
+      const sceneDuration = Math.floor(targetDuration / 4);
+      return [
+        {
+          sceneNumber: 1,
+          title: "Hook",
+          description: "Attention-grabbing opening that creates intrigue",
+          duration: sceneDuration,
+          prompt: `Professional opening hook for ${request.brandInfo.name}, ${request.brandInfo.brandVoice} style, creates immediate interest`,
+          visualStyle: { lighting: "dramatic", mood: "engaging", cameraAngle: "close-up", composition: "centered" }
+        },
+        {
+          sceneNumber: 2,
+          title: "Problem",
+          description: "Present the problem or need the brand solves",
+          duration: sceneDuration,
+          prompt: `Problem presentation for ${request.brandInfo.name}, relatable ${request.brandInfo.targetAudience} scenario`,
+          visualStyle: { lighting: "natural", mood: "empathetic", cameraAngle: "medium", composition: "rule-of-thirds" }
+        },
+        {
+          sceneNumber: 3,
+          title: "Solution",
+          description: "Brand solution demonstration with key benefits",
+          duration: sceneDuration,
+          prompt: `${request.brandInfo.name} solution showcase, professional ${request.brandInfo.industry} setting, clear benefits`,
+          visualStyle: { lighting: "bright", mood: "confident", cameraAngle: "wide-shot", composition: "dynamic" }
+        },
+        {
+          sceneNumber: 4,
+          title: "Call to Action",
+          description: "Strong call to action with contact information",
+          duration: targetDuration - (sceneDuration * 3), // Use remaining time
+          prompt: `Strong call-to-action for ${request.brandInfo.name}, compelling conclusion with clear next steps`,
+          visualStyle: { lighting: "warm", mood: "inspiring", cameraAngle: "medium", composition: "centered" }
+        }
+      ];
+    }
   }
 
   /**

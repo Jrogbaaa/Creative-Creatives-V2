@@ -35,17 +35,65 @@ class GoogleAIService {
 
   async generateVideo(request: VeoGenerationRequest): Promise<{ jobId: string }> {
     try {
-      console.log('🎬 Starting VEO 3 video generation (with updated permissions)...');
+      console.log('🎬 Starting VEO 3 video generation (using long-running endpoint with approved quota)...');
       console.log('📋 Request:', JSON.stringify(request, null, 2));
       
       const accessToken = await this.getAccessToken();
       
-      const apiUrl = `https://us-central1-aiplatform.googleapis.com/v1/projects/${this.projectId}/locations/us-central1/publishers/google/models/veo-3.0-generate-preview:predict`;
+      const apiUrl = `https://us-central1-aiplatform.googleapis.com/v1/projects/${this.projectId}/locations/us-central1/publishers/google/models/veo-3.0-generate-001:predictLongRunning`;
       console.log('🌐 Making request to:', apiUrl);
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes timeout
       
+      // Prepare the request body - support both text-to-video and image-to-video
+      const requestBody: any = {
+        instances: [{
+          prompt: request.prompt
+        }],
+        parameters: {
+          sampleCount: 1,
+          resolution: request.resolution || "720p",
+          aspect_ratio: request.aspectRatio,
+          duration_seconds: request.duration,
+          person_generation: request.personGeneration || "allow_adult",
+          enhance_prompt: request.enhancePrompt !== false, // Default to true
+          generate_audio: request.generateAudio !== false  // Default to true
+        }
+      };
+
+      // Add image support for image-to-video generation
+      if (request.imageUrl || request.imageBytes) {
+        console.log('🖼️ [VEO3] Using image-to-video generation');
+        
+        if (request.imageUrl) {
+          if (request.imageUrl.startsWith('data:')) {
+            // Base64 data URI - extract the base64 part
+            const base64Data = request.imageUrl.split(',')[1];
+            requestBody.instances[0].image = {
+              imageBytes: base64Data,
+              mimeType: request.mimeType || "image/png"
+            };
+          } else if (request.imageUrl.startsWith('gs://')) {
+            // GCS URI
+            requestBody.instances[0].image = {
+              gcsUri: request.imageUrl,
+              mimeType: request.mimeType || "image/png"
+            };
+          }
+        } else if (request.imageBytes) {
+          // Direct base64 bytes
+          requestBody.instances[0].image = {
+            imageBytes: request.imageBytes,
+            mimeType: request.mimeType || "image/png"
+          };
+        }
+      } else {
+        console.log('📝 [VEO3] Using text-to-video generation');
+      }
+
+      console.log('📤 [VEO3] Request body:', JSON.stringify(requestBody, null, 2));
+
       const response = await fetch(
         apiUrl,
         {
@@ -54,15 +102,7 @@ class GoogleAIService {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            instances: [{
-              prompt: request.prompt
-            }],
-            parameters: {
-              sampleCount: 1,
-              resolution: "720p" // Based on VEO 3 documentation
-            }
-          }),
+          body: JSON.stringify(requestBody),
           signal: controller.signal
         }
       );
@@ -210,7 +250,7 @@ class GoogleAIService {
       const accessToken = await this.getAccessToken();
       
       const response = await fetch(
-        `https://us-central1-aiplatform.googleapis.com/v1/projects/${this.projectId}/locations/us-central1/publishers/google/models/veo-001:fetchPredictOperation`,
+        `https://us-central1-aiplatform.googleapis.com/v1/projects/${this.projectId}/locations/us-central1/publishers/google/models/veo-3.0-generate-001:fetchPredictOperation`,
         {
           method: 'POST',
           headers: {
@@ -228,23 +268,39 @@ class GoogleAIService {
       }
 
       const data = await response.json();
+      console.log('🔍 Raw VEO status response:', JSON.stringify(data, null, 2));
       
+      // Check if operation is done
       if (data.done) {
+        console.log('✅ VEO operation is done!');
         if (data.error) {
           return { status: 'failed', error: data.error.message };
         }
         
         const videos = data.response?.videos;
+        console.log('🎬 Videos data:', videos);
         if (videos && videos.length > 0) {
           // Check if it's a GCS URI or base64 encoded
           const video = videos[0];
+          console.log('📹 Video object keys:', Object.keys(video));
           if (video.gcsUri) {
+            console.log('🗂️ Using GCS URI:', video.gcsUri);
             return { status: 'completed', videoUrl: video.gcsUri };
           } else if (video.bytesBase64Encoded) {
+            const videoDataSize = video.bytesBase64Encoded.length;
+            console.log('💾 Using base64 video data, size:', videoDataSize, 'chars');
             const videoUrl = `data:video/mp4;base64,${video.bytesBase64Encoded}`;
             return { status: 'completed', videoUrl };
           }
         }
+      }
+      
+      // ADDITIONAL CHECK: If we already have videoUrl from previous calls, 
+      // the video is complete regardless of the "done" status
+      // This handles cases where the status API lags behind actual completion
+      if (data.videoUrl && data.videoUrl.length > 1000000) { // 1MB+ of base64 data indicates complete video
+        console.log('✅ Found complete video data in response (status override)');
+        return { status: 'completed', videoUrl: data.videoUrl };
       }
       
       return { status: 'processing' };

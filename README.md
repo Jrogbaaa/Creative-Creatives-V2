@@ -1,17 +1,18 @@
 # Creative Creatives V2 🎬✨
 
-**AI-Powered 30-Second Advertisement Creation Platform**
+**AI-Powered Image-to-Video Advertisement Creation Platform**
 
-Transform your advertising with cutting-edge AI technology. Create professional 30-second advertisements using Google Veo video generation, Imagen image creation, and LLaMA-powered creative expertise.
+Transform your advertising with cutting-edge AI technology. Create professional video advertisements using Marcus AI storyboarding, Nano Banana image generation, and Google VEO3 image-to-video technology with complete Firebase storage and video management.
 
 ![Creative Creatives V2](https://img.shields.io/badge/Next.js-14-blue) ![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue) ![Firebase](https://img.shields.io/badge/Firebase-12.7-orange) ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.3-blue) ![Accessibility](https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-green) ![Playwright](https://img.shields.io/badge/Testing-Playwright-red)
 
 ## 🚀 Features
 
-### 🎥 AI Video Generation
-- **Google Veo Integration**: Create stunning 30-second video advertisements
-- **Professional Quality**: Cinematic effects with smooth camera movements
-- **Custom Prompts**: AI-optimized prompts for maximum impact
+### 🎥 Image-to-Video Generation ✅ **FULLY WORKING**
+- **Google VEO3**: State-of-the-art image-to-video generation with audio  
+- **Storyboard Integration**: Uses selected scene images for consistent video generation
+- **Professional Quality**: 720p/1080p video with synchronized audio and effects
+- **Long-running Operations**: Approved quota with predictLongRunning endpoint
 
 ### 🍌 Nano Banana Image Generation *(NEW)*
 - **Gemini 2.5 Flash Image**: Google's latest AI image creation and editing technology  
@@ -42,6 +43,14 @@ Transform your advertising with cutting-edge AI technology. Create professional 
 - **End-to-End Generation**: Video, audio, and visual assets
 - **Cloud Storage**: Firebase integration for asset management
 - **Real-time Progress**: Live updates during generation process
+
+### 🔥 Video Management & Gallery ✅ **NEW - FULLY WORKING**
+- **Firebase Storage**: Persistent video library with user-specific access
+- **Professional Gallery**: Grid/list views with search, filter, and organize capabilities
+- **Download & Delete**: Full video lifecycle management with one-click actions  
+- **Responsive Design**: Perfect experience across desktop, tablet, and mobile devices
+- **Real-time Status**: Live video generation progress tracking and notifications
+- **User Authentication**: Secure, personalized video libraries
 
 ## 🆕 **Latest Updates (September 2025)**
 

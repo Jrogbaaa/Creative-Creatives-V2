@@ -1,0 +1,113 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - navigation [ref=e4]:
+        - generic [ref=e6]:
+          - link "Creative Creatives" [ref=e7]:
+            - /url: /
+            - img [ref=e9]
+            - generic [ref=e11]: Creative Creatives
+          - generic [ref=e12]:
+            - link "Home" [ref=e13]:
+              - /url: /
+            - link "Features" [ref=e14]:
+              - /url: /features
+            - link "Pricing" [ref=e15]:
+              - /url: /pricing
+            - link "About" [ref=e16]:
+              - /url: /about
+          - generic [ref=e17]:
+            - button "Sign In" [ref=e18] [cursor=pointer]
+            - button "Get Started" [ref=e19] [cursor=pointer]
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - heading "Create Stunning Ads in Seconds, Not Days" [level=1] [ref=e23]:
+            - text: Create
+            - generic [ref=e24]: Stunning Ads
+            - text: in Seconds, Not Days
+          - paragraph [ref=e25]: Transform your advertising with AI-powered video generation, intelligent image creation, and a creative expert that understands your brand better than you do.
+        - generic [ref=e26]:
+          - button "Start Creating Now" [ref=e27] [cursor=pointer]:
+            - img [ref=e28] [cursor=pointer]
+            - text: Start Creating Now
+          - button "Watch Demo" [ref=e30] [cursor=pointer]:
+            - img [ref=e31] [cursor=pointer]
+            - text: Watch Demo
+        - generic [ref=e35]:
+          - img [ref=e37]
+          - paragraph [ref=e40]: "Preview: AI-generated advertisement created in under 60 seconds"
+      - generic [ref=e42]:
+        - generic [ref=e43]:
+          - heading "Powered by Cutting-Edge AI" [level=2] [ref=e44]:
+            - text: Powered by
+            - generic [ref=e45]: Cutting-Edge AI
+          - paragraph [ref=e46]: We combine the best AI technologies from Google and Meta to deliver professional-quality advertisements that convert.
+        - generic [ref=e47]:
+          - generic [ref=e49]:
+            - generic [ref=e51]:
+              - img [ref=e53]
+              - heading "AI Video Generation" [level=3] [ref=e56]
+            - paragraph [ref=e58]: Create stunning 30-second video ads using Google Veo technology with professional quality and cinematic effects.
+          - generic [ref=e60]:
+            - generic [ref=e62]:
+              - img [ref=e64]
+              - heading "Smart Image Creation" [level=3] [ref=e68]
+            - paragraph [ref=e70]: Generate high-quality images and graphics using Google Imagen for your ad campaigns and brand materials.
+          - generic [ref=e72]:
+            - generic [ref=e74]:
+              - img [ref=e76]
+              - heading "Creative Expert AI" [level=3] [ref=e78]
+            - paragraph [ref=e80]: Chat with Marcus, your AI creative director powered by LLaMA, for professional advertising insights and guidance.
+          - generic [ref=e82]:
+            - generic [ref=e84]:
+              - img [ref=e86]
+              - heading "Brand Analysis" [level=3] [ref=e90]
+            - paragraph [ref=e92]: Deep brand understanding through intelligent conversation to create ads that perfectly match your identity.
+          - generic [ref=e94]:
+            - generic [ref=e96]:
+              - img [ref=e98]
+              - heading "Rapid Production" [level=3] [ref=e100]
+            - paragraph [ref=e102]: Go from concept to finished ad in minutes, not weeks. Perfect for impatient advertisers who need results fast.
+          - generic [ref=e104]:
+            - generic [ref=e106]:
+              - img [ref=e108]
+              - heading "Audience Targeting" [level=3] [ref=e113]
+            - paragraph [ref=e115]: AI-powered audience analysis ensures your ads resonate with the right people at the right time.
+      - generic [ref=e117]:
+        - heading "From Idea to Ad in 3 Simple Steps" [level=2] [ref=e119]:
+          - text: From Idea to Ad in
+          - generic [ref=e120]: 3 Simple Steps
+        - generic [ref=e121]:
+          - generic [ref=e122]:
+            - generic [ref=e123]: "01"
+            - heading "Brand Discovery" [level=3] [ref=e124]
+            - paragraph [ref=e125]: Chat with our AI creative expert to understand your brand, audience, and goals. Upload existing materials for deeper insights.
+          - generic [ref=e126]:
+            - generic [ref=e127]: "02"
+            - heading "Creative Development" [level=3] [ref=e128]
+            - paragraph [ref=e129]: Our AI generates multiple creative concepts, video scenes, and visual elements tailored to your brand voice and target audience.
+          - generic [ref=e130]:
+            - generic [ref=e131]: "03"
+            - heading "Ad Production" [level=3] [ref=e132]
+            - paragraph [ref=e133]: Google Veo creates your video, Imagen generates supporting visuals, and AI adds perfect audio for a complete 30-second ad.
+      - generic [ref=e136]:
+        - heading "Ready to Create Your First AI Advertisement?" [level=2] [ref=e137]:
+          - text: Ready to Create Your First
+          - generic [ref=e138]: AI Advertisement
+          - text: "?"
+        - paragraph [ref=e139]: Join thousands of marketers who are already creating professional ads in minutes instead of weeks.
+        - button "Get Started Free" [ref=e140] [cursor=pointer]:
+          - img [ref=e141] [cursor=pointer]
+          - text: Get Started Free
+  - alert [ref=e143]
+  - iframe [ref=e144]:
+    
+  - generic [ref=e147] [cursor=pointer]:
+    - img [ref=e148] [cursor=pointer]
+    - generic [ref=e150] [cursor=pointer]: 1 error
+    - button "Hide Errors" [ref=e151] [cursor=pointer]:
+      - img [ref=e152] [cursor=pointer]
+```
