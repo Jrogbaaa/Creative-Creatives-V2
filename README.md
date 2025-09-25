@@ -4,7 +4,7 @@
 
 Transform your advertising with cutting-edge AI technology. Create professional video advertisements using Marcus AI storyboarding, Nano Banana image generation, and Google VEO3 image-to-video technology with complete Firebase storage and video management.
 
-![Creative Creatives V2](https://img.shields.io/badge/Next.js-14-blue) ![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue) ![Firebase](https://img.shields.io/badge/Firebase-12.7-orange) ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.3-blue) ![Accessibility](https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-green) ![Playwright](https://img.shields.io/badge/Testing-Playwright-red)
+![Creative Creatives V2](https://img.shields.io/badge/Next.js-15.1.0-blue) ![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue) ![Firebase](https://img.shields.io/badge/Firebase-12.7-orange) ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.3-blue) ![Accessibility](https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-green) ![Playwright](https://img.shields.io/badge/Testing-Playwright-red)
 
 ## 🚀 Features
 
@@ -44,7 +44,10 @@ Transform your advertising with cutting-edge AI technology. Create professional 
 - **Cloud Storage**: Firebase integration for asset management
 - **Real-time Progress**: Live updates during generation process
 
-### 🔥 Video Management & Gallery ✅ **FULLY WORKING - ISSUES RESOLVED**
+### 🔥 Video Management & Gallery ✅ **FULLY WORKING - ALL ISSUES RESOLVED**
+- **Gallery Fixed**: Firebase timestamp conversion error resolved - videos display correctly
+- **Next.js 15.1.0**: Updated to latest stable version with performance improvements
+- **Enhanced Security**: Comprehensive Firebase security rules for Firestore and Storage
 - **Development Storage**: Working fallback storage for local development testing
 - **Firebase Integration**: Production-ready with proper environment configuration
 - **Professional Gallery**: Grid/list views with search, filter, and organize capabilities

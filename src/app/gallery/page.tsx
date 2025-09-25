@@ -336,7 +336,7 @@ const VideoGalleryPage: React.FC = () => {
                           </div>
                           <div className="flex items-center gap-2">
                             <Calendar className="w-4 h-4" />
-                            Created: {video.generatedAt.toLocaleDateString()}
+                            Created: {video.generatedAt instanceof Date ? video.generatedAt.toLocaleDateString() : new Date(video.generatedAt).toLocaleDateString()}
                           </div>
                           {video.metadata.fileSize && (
                             <div className="flex items-center gap-2">

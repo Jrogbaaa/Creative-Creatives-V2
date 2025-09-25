@@ -2,6 +2,62 @@
 
 All notable changes to Creative Creatives V2 will be documented in this file.
 
+## [3.1.3] - 2025-01-15 - 🎬 Gallery Timestamp Fix & Next.js 15.1.0 Upgrade
+
+### 🔧 **CRITICAL FIXES**
+- **RESOLVED**: `TypeError: video.generatedAt.toLocaleDateString is not a function` in gallery page
+- **FIXED**: Firebase Timestamp conversion error preventing video gallery display
+- **WORKING**: Gallery page now properly displays all VEO3 generated videos with correct dates
+- **ENHANCED**: Robust date handling for Firebase Timestamp objects
+
+### 🚀 **NEXT.JS MAJOR UPGRADE**
+- **UPDATED**: Next.js from 14.0.4 → 15.1.0 (latest stable version)
+- **BENEFITS**: Latest performance improvements, security patches, enhanced TypeScript support
+- **COMPATIBILITY**: All dependencies updated to maintain compatibility
+- **VERIFIED**: No breaking changes, smooth upgrade process
+
+### 🛡️ **FIREBASE SECURITY RULES OVERHAUL**
+- **IMPLEMENTED**: Comprehensive Firebase Security Rules for Firestore and Storage
+- **ADDED**: Helper functions for authentication and data validation
+- **ENHANCED**: User isolation ensuring users can only access their own videos
+- **SECURED**: Data validation with strict schema enforcement for video creation
+- **PROTECTED**: User-specific file access controls in Firebase Storage
+
+### 🔐 **SECURITY IMPROVEMENTS**
+```javascript
+// New security features implemented:
+- isSignedIn() - Authentication verification
+- isUser(userId) - User ownership validation  
+- isValidVideoData() - Data structure validation
+- isValidVideoUpdate() - Update field restrictions
+- belongsToUser(userId) - Storage access control
+```
+
+### 📁 **STORAGE SECURITY STRUCTURE**
+```
+Firebase Storage Security:
+├── /videos/{userId}/ - User video files (isolated)
+├── /images/{userId}/ - User image assets (protected)
+├── /storyboards/{userId}/ - User storyboard data (private)
+├── /temp/{userId}/ - Temporary processing files (secured)
+└── /public/ - Shared assets (read-only for authenticated users)
+```
+
+### ✅ **VERIFICATION RESULTS**
+- ✅ **Gallery Functional**: Videos display correctly with proper timestamps
+- ✅ **User Isolation**: Users can only see their own generated videos
+- ✅ **Security Active**: Firebase rules deployed and operational
+- ✅ **Next.js 15**: Latest features and performance improvements active
+- ✅ **No Breaking Changes**: Seamless upgrade maintained all functionality
+
+### 🎯 **TECHNICAL IMPROVEMENTS**
+- **Enhanced Date Handling**: Robust Firebase Timestamp to Date conversion
+- **Type Safety**: Improved TypeScript type checking for date objects
+- **Development Environment**: Updated to latest Next.js development tools
+- **Firebase Rules**: Production-ready security rules with comprehensive coverage
+
+---
+
 ## [3.1.2] - 2025-09-25 - 🎉 Firebase Issues Completely Resolved
 
 ### 🏆 **CRITICAL FIX - Gallery Now Working**

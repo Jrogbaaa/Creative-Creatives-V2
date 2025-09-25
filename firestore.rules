@@ -1,15 +1,134 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only access their own videos
-    match /videos/{videoId} {
-      allow read, write, delete: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
     }
     
-    // Allow users to read/write their own user documents
+    function isUser(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isValidVideoData() {
+      return request.resource.data.keys().hasAll(['userId', 'title', 'description', 'status', 'jobId', 'metadata']) &&
+             request.resource.data.userId is string &&
+             request.resource.data.title is string &&
+             request.resource.data.description is string &&
+             request.resource.data.status in ['processing', 'completed', 'failed'] &&
+             request.resource.data.jobId is string &&
+             request.resource.data.metadata is map;
+    }
+    
+    function isValidVideoUpdate() {
+      // Allow updating specific fields only
+      let allowedUpdateFields = ['status', 'videoUrl', 'updatedAt', 'metadata'].toSet();
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedUpdateFields);
+    }
+    
+    // Users collection - for storing user profiles and preferences
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isUser(userId);
+      allow create: if isUser(userId) && 
+                    request.resource.data.keys().hasAll(['uid', 'email']) &&
+                    request.resource.data.uid == request.auth.uid;
+    }
+    
+    // Videos collection - for storing generated videos and their metadata
+    match /videos/{videoId} {
+      // Read: User can only read their own videos
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      // Create: User can only create videos for themselves with valid data
+      allow create: if isSignedIn() && 
+                    request.resource.data.userId == request.auth.uid &&
+                    isValidVideoData();
+      
+      // Update: User can only update their own videos with allowed fields
+      allow update: if isSignedIn() && 
+                    resource.data.userId == request.auth.uid &&
+                    request.resource.data.userId == request.auth.uid &&
+                    isValidVideoUpdate();
+      
+      // Delete: User can only delete their own videos
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+    
+    // Projects collection - for storing storyboard and project data
+    match /projects/{projectId} {
+      allow read, write: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && 
+                    request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+    
+    // Storyboards collection - for storing generated storyboards
+    match /storyboards/{storyboardId} {
+      allow read, write: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && 
+                    request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+    
+    // User settings and preferences
+    match /userSettings/{userId} {
+      allow read, write: if isUser(userId);
+    }
+    
+    // Analytics and usage tracking (read-only for users, admin write)
+    match /analytics/{userId} {
+      allow read: if isUser(userId);
+      // Note: Writes handled by server-side admin SDK
+    }
+    
+    // Deny all other requests
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if the path belongs to the authenticated user
+    function belongsToUser(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Videos storage - users can only access their own video files
+    match /videos/{userId}/{allPaths=**} {
+      allow read, write, delete: if belongsToUser(userId);
+    }
+    
+    // Images storage - for storyboard images and thumbnails
+    match /images/{userId}/{allPaths=**} {
+      allow read, write, delete: if belongsToUser(userId);
+    }
+    
+    // Storyboards storage - for storyboard data and images
+    match /storyboards/{userId}/{allPaths=**} {
+      allow read, write, delete: if belongsToUser(userId);
+    }
+    
+    // Temporary uploads - for processing files
+    match /temp/{userId}/{allPaths=**} {
+      allow read, write, delete: if belongsToUser(userId);
+    }
+    
+    // Public assets (logos, etc.) - read-only for all authenticated users
+    match /public/{allPaths=**} {
+      allow read: if isAuthenticated();
+    }
+    
+    // Deny all other requests
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }
