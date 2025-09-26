@@ -153,6 +153,41 @@ class NanaBananaService {
 
   /**
    * Replace characters in images using reference photos
+   * 
+   * This is the core character replacement method that enables consistent
+   * character representation across advertisement scenes. It uses Gemini 2.5 Flash Image
+   * with multi-image composition to seamlessly integrate a reference character
+   * into an existing scene while preserving the original image's aesthetics.
+   * 
+   * @param originalImageData - Base64 encoded image data of the scene to modify
+   * @param characterImageData - Base64 encoded reference photo of the character to insert
+   * @param prompt - Natural language description of the replacement task
+   * @param options - Configuration options for the replacement
+   * @param options.targetDescription - Specific description of what/who to replace in the original image
+   * @param options.preserveStyle - Whether to maintain original image's lighting, composition, and style (default: true)
+   * @param options.characterDescription - Additional context about the reference character
+   * 
+   * @returns Promise<NanoBananaResponse> - Contains success status and replacement image data
+   * 
+   * @example
+   * ```typescript
+   * const result = await nanoBanana.replaceCharacter(
+   *   originalSceneBase64,
+   *   ceoPhotoBase64,
+   *   "Replace the person in this advertisement with our CEO",
+   *   {
+   *     targetDescription: "the person in the business suit",
+   *     preserveStyle: true,
+   *     characterDescription: "Professional CEO in formal business attire"
+   *   }
+   * );
+   * ```
+   * 
+   * Technical Implementation:
+   * - Uses Gemini 2.5 Flash Image's multi-image composition capability
+   * - Constructs enhanced prompts for context-aware character integration
+   * - Preserves original scene lighting, background, and composition
+   * - Handles style consistency across multiple scene replacements
    */
   async replaceCharacter(
     originalImageData: string,
@@ -166,19 +201,33 @@ class NanaBananaService {
   ): Promise<NanoBananaResponse> {
     const { targetDescription, preserveStyle = true, characterDescription } = options || {};
     
-    // Build enhanced prompt for character replacement
+    /**
+     * Enhanced Prompt Construction for Character Replacement
+     * 
+     * The prompt engineering here is critical for consistent character replacement.
+     * We layer multiple instructions to guide Gemini 2.5 Flash Image in producing
+     * professional-quality character integration:
+     * 
+     * 1. Base prompt: User's natural language instruction
+     * 2. Target specification: Precise description of what to replace
+     * 3. Style preservation: Explicit instructions to maintain scene integrity
+     * 4. Character context: Additional details about the replacement character
+     */
     let enhancedPrompt = prompt;
     
+    // Layer 1: Specify exact replacement target if provided
     if (targetDescription) {
       enhancedPrompt += `. Specifically replace ${targetDescription}.`;
     }
     
+    // Layer 2: Style preservation instructions (critical for professional results)
     if (preserveStyle) {
       enhancedPrompt += ` Maintain the original image's style, lighting, composition, background, and overall aesthetic. `;
       enhancedPrompt += `Only replace the specified person/character while keeping everything else exactly the same. `;
       enhancedPrompt += `The replacement should look natural and seamlessly integrated into the original scene.`;
     }
     
+    // Layer 3: Character context for better integration
     if (characterDescription) {
       enhancedPrompt += ` The new character is described as: ${characterDescription}.`;
     }

@@ -3,6 +3,16 @@ import { nanoBanana } from '@/lib/nano-banana';
 import { HumanCharacterReference, ImageAsset, BatchCharacterApplicationResult } from '@/types';
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const performanceMetrics = {
+    startTime,
+    validationTime: 0,
+    batchProcessingTime: 0,
+    totalScenes: 0,
+    averageSceneTime: 0,
+    totalTime: 0
+  };
+
   try {
     // Check if Gemini API key is configured
     if (!process.env.GEMINI_API_KEY) {
@@ -64,12 +74,15 @@ export async function POST(request: NextRequest) {
     } = await request.json();
     
     // Validate required fields
+    const validationStartTime = Date.now();
     if (!body.characterReference || !body.sceneData || body.sceneData.length === 0) {
       return NextResponse.json(
         { error: 'Missing required fields: characterReference and sceneData' },
         { status: 400 }
       );
     }
+    performanceMetrics.validationTime = Date.now() - validationStartTime;
+    performanceMetrics.totalScenes = body.sceneData.length;
 
     console.log('👥 [API] Starting batch character application...');
     console.log('📝 Character:', body.characterReference.name);
@@ -85,8 +98,13 @@ export async function POST(request: NextRequest) {
       failedScenes: 0
     };
 
+    // Start batch processing timer
+    const batchProcessingStartTime = Date.now();
+    const sceneProcessingTimes: number[] = [];
+
     // Process each scene
     for (const sceneInfo of body.sceneData) {
+      const sceneStartTime = Date.now();
       try {
         console.log(`🔄 Processing scene: ${sceneInfo.sceneTitle}`);
 
@@ -139,11 +157,18 @@ export async function POST(request: NextRequest) {
           console.log(`❌ Scene ${sceneInfo.sceneTitle} failed:`, result.error);
         }
 
+        const sceneProcessingTime = Date.now() - sceneStartTime;
+        sceneProcessingTimes.push(sceneProcessingTime);
+        console.log(`⏱️  Scene processing time: ${sceneProcessingTime}ms`);
+
         // Add a small delay between requests to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 1000));
 
       } catch (error) {
         console.error(`❌ Error processing scene ${sceneInfo.sceneId}:`, error);
+        const sceneProcessingTime = Date.now() - sceneStartTime;
+        sceneProcessingTimes.push(sceneProcessingTime);
+        
         results.results.push({
           sceneId: sceneInfo.sceneId,
           success: false,
@@ -153,12 +178,30 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Calculate final performance metrics
+    performanceMetrics.batchProcessingTime = Date.now() - batchProcessingStartTime;
+    performanceMetrics.totalTime = Date.now() - startTime;
+    performanceMetrics.averageSceneTime = sceneProcessingTimes.length > 0 
+      ? Math.round(sceneProcessingTimes.reduce((a, b) => a + b, 0) / sceneProcessingTimes.length)
+      : 0;
+
     console.log(`✅ [API] Batch application completed: ${results.successfulScenes}/${results.totalScenes} successful`);
+    console.log(`⏱️  [PERF] Total batch processing time: ${performanceMetrics.batchProcessingTime}ms`);
+    console.log(`⏱️  [PERF] Average scene time: ${performanceMetrics.averageSceneTime}ms`);
     
     return NextResponse.json({
       success: true,
       data: results,
-      message: `Processed ${results.totalScenes} scenes: ${results.successfulScenes} successful, ${results.failedScenes} failed`
+      message: `Processed ${results.totalScenes} scenes: ${results.successfulScenes} successful, ${results.failedScenes} failed`,
+      performance: {
+        validationTime: performanceMetrics.validationTime,
+        batchProcessingTime: performanceMetrics.batchProcessingTime,
+        totalTime: performanceMetrics.totalTime,
+        totalScenes: performanceMetrics.totalScenes,
+        averageSceneTime: performanceMetrics.averageSceneTime,
+        sceneProcessingTimes,
+        timestamp: new Date().toISOString()
+      }
     });
 
   } catch (error) {

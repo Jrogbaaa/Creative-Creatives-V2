@@ -252,6 +252,7 @@ const HomePage: React.FC = () => {
               size="lg"
               onClick={handleGetStarted}
               className="creative-gradient text-white px-12 py-6 text-xl font-semibold hover:shadow-xl transition-all duration-300 pulse-glow"
+              data-testid="hero-get-started-free-btn"
             >
               <Sparkles className="w-6 h-6 mr-3" />
               Get Started Free

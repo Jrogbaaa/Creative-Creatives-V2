@@ -1,5 +1,30 @@
 'use client';
 
+/**
+ * CharacterReferenceUpload Component
+ * 
+ * This component enables users to upload and manage human character reference photos
+ * for consistent character representation across advertisement storyboard scenes.
+ * 
+ * Key Features:
+ * - Drag-and-drop file upload with validation
+ * - Base64 image conversion for immediate processing
+ * - Character metadata management (name, description)
+ * - Visual thumbnail grid for character library
+ * - File size and type validation
+ * - Responsive design across devices
+ * 
+ * Technical Implementation:
+ * - Uses FileReader API for client-side base64 conversion
+ * - Validates image files (type, size) before processing
+ * - Stores character data in parent component state
+ * - Optimized for mobile and desktop interfaces
+ * 
+ * @component CharacterReferenceUpload
+ * @author Creative Creatives Team
+ * @version 4.1.0
+ */
+
 import React, { useState, useRef, useCallback } from 'react';
 import { HumanCharacterReference } from '@/types';
 import { Card } from '@/components/ui/card';
@@ -29,12 +54,25 @@ const CharacterReferenceUpload: React.FC<CharacterReferenceUploadProps> = ({
   const [newCharacterDescription, setNewCharacterDescription] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  /**
+   * Convert uploaded image file to base64 format
+   * 
+   * This function handles the client-side conversion of uploaded image files
+   * to base64 encoded data, which is required for:
+   * - Immediate preview in the UI
+   * - Storage in component state without file system dependency
+   * - Direct transmission to character replacement APIs
+   * 
+   * @param file - The uploaded image file
+   * @returns Promise resolving to {data: base64String, mimeType: string}
+   */
   const convertImageToBase64 = useCallback((file: File): Promise<{ data: string; mimeType: string }> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
         const result = reader.result as string;
-        const base64Data = result.split(',')[1]; // Remove data:image/...;base64, prefix
+        // Extract pure base64 data, removing the data URL prefix
+        const base64Data = result.split(',')[1];
         resolve({
           data: base64Data,
           mimeType: file.type
@@ -45,24 +83,48 @@ const CharacterReferenceUpload: React.FC<CharacterReferenceUploadProps> = ({
     });
   }, []);
 
+  /**
+   * Handle file selection and character creation
+   * 
+   * This is the core method that processes uploaded character reference images:
+   * 
+   * Validation Pipeline:
+   * 1. File type validation (must be image/*)
+   * 2. File size validation (max 10MB to prevent memory issues)
+   * 3. Character limit validation (configurable max characters)
+   * 
+   * Processing Pipeline:
+   * 1. Convert image to base64 for immediate use
+   * 2. Create HumanCharacterReference object with metadata
+   * 3. Generate unique character ID for tracking
+   * 4. Add to parent component state via callback
+   * 5. Clear form for next upload
+   * 
+   * Error Handling:
+   * - User-friendly alerts for validation failures
+   * - Console logging for debugging
+   * - Graceful cleanup on processing errors
+   * 
+   * @param files - FileList from input element or drag/drop
+   */
   const handleFileSelect = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     
     const file = files[0];
     
-    // Validate file type
+    // Validation Layer 1: File type check
     if (!file.type.startsWith('image/')) {
       alert('Please select an image file (PNG, JPG, JPEG, etc.)');
       return;
     }
 
-    // Validate file size (max 10MB)
+    // Validation Layer 2: File size check (prevent memory issues)
     if (file.size > 10 * 1024 * 1024) {
       alert('Image file size must be less than 10MB');
       return;
     }
 
-    // Check if we've reached the maximum number of characters
+    // Validation Layer 3: Character limit check
     if (characterReferences.length >= maxCharacters) {
       alert(`Maximum ${maxCharacters} character references allowed`);
       return;
@@ -71,8 +133,10 @@ const CharacterReferenceUpload: React.FC<CharacterReferenceUploadProps> = ({
     setIsUploading(true);
     
     try {
+      // Convert to base64 for immediate use and API transmission
       const { data, mimeType } = await convertImageToBase64(file);
       
+      // Create character reference object with metadata
       const newCharacter: HumanCharacterReference = {
         id: `char_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         name: newCharacterName.trim() || `Character ${characterReferences.length + 1}`,
@@ -82,9 +146,10 @@ const CharacterReferenceUpload: React.FC<CharacterReferenceUploadProps> = ({
         description: newCharacterDescription.trim() || undefined
       };
       
+      // Add to parent state management
       onAddCharacter(newCharacter);
       
-      // Clear form
+      // Clean up form for next upload
       setNewCharacterName('');
       setNewCharacterDescription('');
       if (fileInputRef.current) {

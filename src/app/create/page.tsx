@@ -669,9 +669,23 @@ Create seamless video with talking characters, synchronized audio, professional 
         throw new Error('No selected image found for video generation');
       }
 
+      // Validate image data
+      if (!selectedImage.url) {
+        throw new Error('Selected image has no URL data');
+      }
+
+      if (selectedImage.url.startsWith('data:')) {
+        const base64Part = selectedImage.url.split(',')[1];
+        if (!base64Part || base64Part.length < 100) { // Minimum reasonable image size
+          throw new Error('Selected image has invalid or empty base64 data');
+        }
+      }
+
       console.log('🎬 Starting image-to-video generation with:', {
         sceneCount: selectedScenes.length,
         firstSceneImage: selectedImage.id,
+        imageUrlLength: selectedImage.url.length,
+        imageUrlPrefix: selectedImage.url.substring(0, 50) + '...',
         duration: videoConfig.duration
       });
 

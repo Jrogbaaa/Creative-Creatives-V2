@@ -3,6 +3,14 @@ import { nanoBanana } from '@/lib/nano-banana';
 import { HumanCharacterReference } from '@/types';
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const performanceMetrics = {
+    startTime,
+    validationTime: 0,
+    processingTime: 0,
+    totalTime: 0
+  };
+
   try {
     // Check if Gemini API key is configured
     if (!process.env.GEMINI_API_KEY) {
@@ -49,16 +57,21 @@ export async function POST(request: NextRequest) {
     } = await request.json();
     
     // Validate required fields
+    const validationStartTime = Date.now();
     if (!body.originalImageData || !body.characterReference || !body.replacementPrompt) {
       return NextResponse.json(
         { error: 'Missing required fields: originalImageData, characterReference, and replacementPrompt' },
         { status: 400 }
       );
     }
+    performanceMetrics.validationTime = Date.now() - validationStartTime;
 
     console.log('👤 [API] Starting character replacement...');
     console.log('📝 Character:', body.characterReference.name);
     console.log('📝 Prompt:', body.replacementPrompt);
+
+    // Start processing timer
+    const processingStartTime = Date.now();
 
     // Use Nano Banana's specialized character replacement method
     const result = await nanoBanana.replaceCharacter(
@@ -72,11 +85,15 @@ export async function POST(request: NextRequest) {
       }
     );
     
+    performanceMetrics.processingTime = Date.now() - processingStartTime;
+    performanceMetrics.totalTime = Date.now() - startTime;
+    
     if (!result.success) {
       throw new Error(result.error || 'Character replacement failed');
     }
 
     console.log('✅ [API] Character replacement successful');
+    console.log('⏱️  [PERF] Processing time:', performanceMetrics.processingTime + 'ms');
     
       return NextResponse.json({
         success: true,
@@ -86,7 +103,13 @@ export async function POST(request: NextRequest) {
           name: body.characterReference.name,
           description: body.characterReference.description
         },
-        message: `Successfully replaced character with ${body.characterReference.name}`
+        message: `Successfully replaced character with ${body.characterReference.name}`,
+        performance: {
+          validationTime: performanceMetrics.validationTime,
+          processingTime: performanceMetrics.processingTime,
+          totalTime: performanceMetrics.totalTime,
+          timestamp: new Date().toISOString()
+        }
       });
 
   } catch (error) {

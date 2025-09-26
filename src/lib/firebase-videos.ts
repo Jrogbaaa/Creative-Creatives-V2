@@ -22,45 +22,41 @@ import {
   deleteObject 
 } from 'firebase/storage';
 
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
-};
+// Import Firebase configurations
+import firebaseApp, { db as firebaseDb } from './firebase';
 
-// Force development mode for now
-const isFirebaseConfigured = false; // Object.values(firebaseConfig).every(val => val);
-console.log('🔧 Firebase configuration - FORCED DEVELOPMENT MODE:', { 
-  isFirebaseConfigured, 
-  hasApiKey: !!firebaseConfig.apiKey,
-  hasAuthDomain: !!firebaseConfig.authDomain,
-  hasProjectId: !!firebaseConfig.projectId 
+// Only import admin SDK on server-side to avoid client-side module resolution errors
+let adminDb: any = null;
+if (typeof window === 'undefined') {
+  try {
+    const { adminDb: importedAdminDb } = require('./firebase-admin');
+    adminDb = importedAdminDb;
+  } catch (error) {
+    console.warn('Firebase Admin SDK not available:', error.message);
+  }
+}
+
+// Detect if running on server-side (for API routes) or client-side
+const isServerSide = typeof window === 'undefined';
+
+// Try to use proper Firebase configuration
+const db = isServerSide ? adminDb : firebaseDb;
+const app = isServerSide ? null : firebaseApp;
+const storage = !isServerSide && app ? getStorage(app) : null;
+const isFirebaseConfigured = !!db;
+
+console.log('🔧 Firebase Video Service - Configuration status:', { 
+  isServerSide,
+  isFirebaseConfigured,
+  usingAdminSDK: isServerSide && !!adminDb,
+  usingClientSDK: !isServerSide && !!firebaseDb,
+  hasDb: !!db,
+  hasStorage: !!storage
 });
 
-// Initialize Firebase only if configured
-let app: any = null;
-let db: any = null;
-let storage: any = null;
-
-if (isFirebaseConfigured) {
-  try {
-    // Check if Firebase app is already initialized to prevent duplicate app error
-    app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    storage = getStorage(app);
-    console.log('✅ Firebase initialized successfully');
-  } catch (error) {
-    console.warn('⚠️ Firebase initialization failed, using development storage:', error);
-    app = null;
-    db = null;
-    storage = null;
-  }
-} else {
-  console.log('🔧 Firebase not configured, using development storage');
+// If Firebase is not configured, we'll fall back to development storage
+if (!isFirebaseConfigured) {
+  console.warn('⚠️ Firebase not properly configured, using development storage');
 }
 
 // Development fallback storage
@@ -195,24 +191,35 @@ class FirebaseVideoService {
       console.log('💾 Saving video:', video.title);
       
       const videoId = `video_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const videoData = {
-        ...video,
-        id: videoId,
-        generatedAt: new Date(),
-        updatedAt: new Date()
-      };
-
+      const now = new Date();
+      
       if (isFirebaseConfigured && db) {
-        const firestoreData = {
-          ...video,
-          generatedAt: Timestamp.fromDate(new Date()),
-          updatedAt: Timestamp.fromDate(new Date())
-        };
-        const docRef = await addDoc(collection(db, 'videos'), firestoreData);
+        // Prepare data differently for Admin SDK vs Client SDK
+        const firestoreData = isServerSide 
+          ? {
+              // Admin SDK - use regular Date objects
+              ...video,
+              generatedAt: now,
+              updatedAt: now
+            }
+          : {
+              // Client SDK - use Timestamp objects
+              ...video,
+              generatedAt: Timestamp.fromDate(now),
+              updatedAt: Timestamp.fromDate(now)
+            };
+
+        const docRef = await addDoc(collection(db as any, 'videos'), firestoreData);
         console.log('✅ Video saved to Firebase with ID:', docRef.id);
         return docRef.id;
       } else {
         // Development storage
+        const videoData = {
+          ...video,
+          id: videoId,
+          generatedAt: now,
+          updatedAt: now
+        };
         devStorage.set(videoId, videoData);
         console.log('✅ Video saved to dev storage with ID:', videoId);
         return videoId;
@@ -251,6 +258,12 @@ class FirebaseVideoService {
     try {
       console.log('📤 Uploading video file to Firebase Storage...');
       
+      // Check if storage is available
+      if (!storage) {
+        console.warn('⚠️ Firebase Storage not available, keeping base64 data URI');
+        return videoData; // Return original base64 data URI
+      }
+      
       // Convert base64 data URI to blob
       const response = await fetch(videoData);
       const blob = await response.blob();
@@ -269,7 +282,8 @@ class FirebaseVideoService {
       return downloadURL;
     } catch (error) {
       console.error('❌ Error uploading video file:', error);
-      throw new Error(`Failed to upload video: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.warn('⚠️ Falling back to base64 data URI due to upload failure');
+      return videoData; // Fallback to original base64 data URI
     }
   }
 
@@ -308,8 +322,13 @@ class FirebaseVideoService {
           videos.push({
             id: doc.id,
             ...data,
-            generatedAt: data.generatedAt.toDate(),
-            updatedAt: data.updatedAt.toDate()
+            // Handle date conversion based on SDK type
+            generatedAt: isServerSide 
+              ? data.generatedAt  // Admin SDK returns Date objects directly
+              : data.generatedAt.toDate(), // Client SDK returns Timestamp objects
+            updatedAt: isServerSide 
+              ? data.updatedAt 
+              : data.updatedAt.toDate()
           } as StoredVideo);
         });
 
@@ -381,9 +400,9 @@ class FirebaseVideoService {
         throw new Error('Unauthorized: You can only delete your own videos');
       }
 
-      if (isFirebaseConfigured && db && storage) {
-        // Delete file from Storage if it exists
-        if (video.videoUrl && !video.videoUrl.startsWith('data:')) {
+      if (isFirebaseConfigured && db) {
+        // Delete file from Storage if it exists and storage is available
+        if (storage && video.videoUrl && !video.videoUrl.startsWith('data:')) {
           try {
             const storageRef = ref(storage, `videos/${userId}/${videoId}.mp4`);
             await deleteObject(storageRef);

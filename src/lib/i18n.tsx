@@ -95,6 +95,35 @@ export interface TranslationKeys {
   'features.unlimited': string;
   'features.priority': string;
   'features.support': string;
+
+  // Character Replacement
+  'character.title': string;
+  'character.upload': string;
+  'character.uploadDescription': string;
+  'character.name': string;
+  'character.nameDescription': string;
+  'character.description': string;
+  'character.descriptionOptional': string;
+  'character.dragDrop': string;
+  'character.selectImage': string;
+  'character.remove': string;
+  'character.uploaded': string;
+  'character.replace': string;
+  'character.replaceWith': string;
+  'character.replacementPrompt': string;
+  'character.targetDescription': string;
+  'character.processing': string;
+  'character.success': string;
+  'character.failed': string;
+  'character.batchApply': string;
+  'character.batchProcessing': string;
+  'character.consistency': string;
+  'character.consistencyDescription': string;
+  'character.quickApply': string;
+  'character.selectScenes': string;
+  'character.customPrompt': string;
+  'character.maxReached': string;
+  'character.uploadInstructions': string;
 }
 
 // Default English translations
@@ -173,7 +202,36 @@ const DEFAULT_TRANSLATIONS: TranslationKeys = {
   'pricing.enterprise': 'Enterprise',
   'features.unlimited': 'Unlimited',
   'features.priority': 'Priority Support',
-  'features.support': '24/7 Support'
+  'features.support': '24/7 Support',
+
+  // Character Replacement
+  'character.title': 'Character References',
+  'character.upload': 'Upload Character Photo',
+  'character.uploadDescription': 'Upload photos of people you\'d like to replace characters with in your storyboard scenes.',
+  'character.name': 'Character Name',
+  'character.nameDescription': 'e.g., CEO John, Model Sarah',
+  'character.description': 'Description (optional)',
+  'character.descriptionOptional': 'e.g., Company CEO in formal wear',
+  'character.dragDrop': 'Drag and drop an image here, or click to select',
+  'character.selectImage': 'Select Image',
+  'character.remove': 'Remove character',
+  'character.uploaded': 'Uploaded {{date}}',
+  'character.replace': 'Replace Character',
+  'character.replaceWith': 'Replace with {{name}}',
+  'character.replacementPrompt': 'Replacement Prompt',
+  'character.targetDescription': 'What to replace (optional)',
+  'character.processing': 'Processing character replacement...',
+  'character.success': 'Character replacement successful',
+  'character.failed': 'Character replacement failed',
+  'character.batchApply': 'Apply to Multiple Scenes',
+  'character.batchProcessing': 'Processing {{count}} scenes...',
+  'character.consistency': 'Character Consistency Manager',
+  'character.consistencyDescription': 'Apply characters consistently across all scenes',
+  'character.quickApply': 'Quick Apply',
+  'character.selectScenes': 'Select scenes to apply character',
+  'character.customPrompt': 'Custom prompt (optional)',
+  'character.maxReached': 'Maximum {{max}} character references reached',
+  'character.uploadInstructions': 'You can apply characters to storyboard scenes for consistent representation throughout your advertisement.'
 };
 
 /**

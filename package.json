@@ -1,6 +1,6 @@
 {
   "name": "creative-creatives-v2",
-  "version": "1.0.0",
+  "version": "4.1.1",
   "description": "AI-powered 30-second ad creation platform using Google Veo, AI image generation, and LLaMA creative expert",
   "private": true,
   "scripts": {
@@ -42,6 +42,7 @@
     "@xenova/transformers": "^2.17.2",
     "autoprefixer": "^10.4.16",
     "axios": "^1.6.2",
+    "canvas": "^3.2.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "cmdk": "^0.2.0",

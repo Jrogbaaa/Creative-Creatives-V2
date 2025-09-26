@@ -65,11 +65,19 @@ class GoogleAIService {
       // Add image support for image-to-video generation
       if (request.imageUrl || request.imageBytes) {
         console.log('🖼️ [VEO3] Using image-to-video generation');
+        console.log('📸 [VEO3] Image URL length:', request.imageUrl?.length || 0);
+        console.log('📸 [VEO3] Image URL prefix:', request.imageUrl?.substring(0, 50) + '...');
         
         if (request.imageUrl) {
           if (request.imageUrl.startsWith('data:')) {
             // Base64 data URI - extract the base64 part
             const base64Data = request.imageUrl.split(',')[1];
+            console.log('📸 [VEO3] Extracted base64 length:', base64Data?.length || 0);
+            
+            if (!base64Data || base64Data.length === 0) {
+              throw new Error('Invalid base64 image data: extracted data is empty');
+            }
+            
             requestBody.instances[0].image = {
               imageBytes: base64Data,
               mimeType: request.mimeType || "image/png"

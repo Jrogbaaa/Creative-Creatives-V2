@@ -166,6 +166,7 @@ export const Navigation: React.FC = () => {
                     <Button
                       onClick={handleAuthAction}
                       className="w-full creative-gradient text-white"
+                      data-testid="nav-get-started-btn"
                     >
                       Get Started
                     </Button>
