@@ -133,7 +133,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     console.error('Error Info:', errorInfo);
     
     // Log to our structured logger
-    logger.errorBoundary(errorInfo.componentStack, error);
+    logger.errorBoundary(errorInfo.componentStack || 'Unknown component stack', error);
     
     // Update state with error info
     this.setState({

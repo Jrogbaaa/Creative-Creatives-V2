@@ -41,18 +41,18 @@ import {
   StoryboardPlan,
   StoryboardScene,
   MarcusStoryboardRequest,
-  ChatMessage
+  ChatMessage,
+  HumanCharacterReference,
+  CharacterReplacementRequest,
+  CharacterReplacementResult,
+  BatchCharacterApplicationRequest,
+  BatchCharacterApplicationResult,
+  BrandInfo
 } from '@/types';
 import { firebaseVideos, convertBase64ToSize } from '@/lib/firebase-videos';
-
-interface BrandInfo {
-  name: string;
-  industry: string;
-  targetAudience: string;
-  brandVoice: 'professional' | 'casual' | 'friendly' | 'authoritative' | 'playful';
-  colorPalette: string[];
-  description: string;
-}
+import CharacterReferenceUpload from '@/components/CharacterReferenceUpload';
+import CharacterReplacementInterface from '@/components/CharacterReplacementInterface';
+import CharacterConsistencyManager from '@/components/CharacterConsistencyManager';
 
 interface VideoConfig {
   duration: number;
@@ -79,6 +79,12 @@ interface StoryboardState {
   currentGeneratingScene: number | null;
   chatMessages: ChatMessage[];
   planGenerated: boolean;
+  characterReferences: HumanCharacterReference[];
+  isProcessingCharacterReplacement: boolean;
+  currentReplacingScene: string | null;
+  // Batch processing state
+  isProcessingBatchApplication: boolean;
+  currentBatchProcessingScenes: string[];
 }
 
 const CreateAdPage: React.FC = () => {
@@ -110,7 +116,12 @@ const CreateAdPage: React.FC = () => {
     isGeneratingImages: false,
     currentGeneratingScene: null,
     chatMessages: [],
-    planGenerated: false
+    planGenerated: false,
+    characterReferences: [],
+    isProcessingCharacterReplacement: false,
+    currentReplacingScene: null,
+    isProcessingBatchApplication: false,
+    currentBatchProcessingScenes: []
   });
 
   const steps = [
@@ -329,6 +340,278 @@ const CreateAdPage: React.FC = () => {
     } catch (error) {
       console.error('Scene image editing error:', error);
     }
+  };
+
+  // Character reference management handlers
+  const handleAddCharacterReference = (character: HumanCharacterReference) => {
+    setStoryboard(prev => ({
+      ...prev,
+      characterReferences: [...prev.characterReferences, character]
+    }));
+  };
+
+  const handleRemoveCharacterReference = (characterId: string) => {
+    setStoryboard(prev => ({
+      ...prev,
+      characterReferences: prev.characterReferences.filter(char => char.id !== characterId)
+    }));
+  };
+
+  const handleCharacterReplacementRequest = async (request: Omit<CharacterReplacementRequest, 'id' | 'createdAt'>) => {
+    try {
+      const scene = storyboard.plan?.scenes.find(s => s.id === request.sceneId);
+      if (!scene || !scene.selectedImageId) {
+        throw new Error('Scene or selected image not found');
+      }
+
+      const selectedImage = scene.generatedImages.find(img => img.id === scene.selectedImageId);
+      if (!selectedImage) {
+        throw new Error('Selected image not found');
+      }
+
+      setStoryboard(prev => ({
+        ...prev,
+        isProcessingCharacterReplacement: true,
+        currentReplacingScene: request.sceneId
+      }));
+
+      console.log('🔄 Starting character replacement...');
+
+      // Call the character replacement API
+      const response = await fetch('/api/replace-character', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          originalImageData: selectedImage.url.includes('base64,') 
+            ? selectedImage.url.split('base64,')[1] 
+            : selectedImage.url,
+          characterReference: request.characterReference,
+          replacementPrompt: request.replacementPrompt,
+          targetDescription: request.targetDescription
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Character replacement failed');
+      }
+
+      const data = await response.json();
+
+      if (!data.success || !data.images || data.images.length === 0) {
+        throw new Error('No replaced images received');
+      }
+
+      // Create replacement result
+      const replacementResult: CharacterReplacementResult = {
+        originalImageId: selectedImage.id,
+        replacedImageId: `replaced_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        characterReference: request.characterReference,
+        prompt: request.replacementPrompt,
+        success: true,
+        createdAt: new Date()
+      };
+
+      // Create new image assets from the replaced images
+      const replacedImages: ImageAsset[] = data.images.map((img: any, index: number) => ({
+        id: index === 0 ? replacementResult.replacedImageId : `replaced_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
+        projectId: selectedImage.projectId,
+        url: `data:${img.mimeType};base64,${img.data}`,
+        prompt: `${selectedImage.prompt} [Character replaced with ${request.characterReference.name}]`,
+        approved: false,
+        generatedBy: 'nano-banana' as const,
+        metadata: {
+          aspectRatio: selectedImage.metadata.aspectRatio,
+          editHistory: [
+            ...(selectedImage.metadata.editHistory || []),
+            `Character replacement: ${request.replacementPrompt}`
+          ]
+        },
+        createdAt: new Date()
+      }));
+
+      // Create character replacement request with ID
+      const fullRequest: CharacterReplacementRequest = {
+        ...request,
+        id: `char_req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        createdAt: new Date()
+      };
+
+      // Update the scene with new images and replacement info
+      setStoryboard(prev => ({
+        ...prev,
+        plan: prev.plan ? {
+          ...prev.plan,
+          scenes: prev.plan.scenes.map(s => 
+            s.id === request.sceneId
+              ? {
+                  ...s,
+                  generatedImages: [...s.generatedImages, ...replacedImages],
+                  characterReplacements: [...(s.characterReplacements || []), fullRequest],
+                  replacedImages: [...(s.replacedImages || []), replacementResult]
+                }
+              : s
+          )
+        } : null,
+        isProcessingCharacterReplacement: false,
+        currentReplacingScene: null
+      }));
+
+      console.log('✅ Character replacement completed successfully');
+
+    } catch (error) {
+      console.error('❌ Character replacement error:', error);
+      setStoryboard(prev => ({
+        ...prev,
+        isProcessingCharacterReplacement: false,
+        currentReplacingScene: null
+      }));
+      // You might want to show an error toast here
+      alert(error instanceof Error ? error.message : 'Character replacement failed. Please try again.');
+    }
+  };
+
+  // Batch character application handler
+  const handleBatchCharacterApplication = async (characterId: string, sceneIds: string[], prompt?: string) => {
+    try {
+      const character = storyboard.characterReferences.find(char => char.id === characterId);
+      if (!character || !storyboard.plan) {
+        throw new Error('Character or storyboard plan not found');
+      }
+
+      // Get scene data for the selected scenes
+      const sceneData = sceneIds
+        .map(sceneId => {
+          const scene = storyboard.plan!.scenes.find(s => s.id === sceneId);
+          if (!scene || !scene.selectedImageId) return null;
+          
+          const selectedImage = scene.generatedImages.find(img => img.id === scene.selectedImageId);
+          if (!selectedImage) return null;
+
+          return {
+            sceneId: scene.id,
+            selectedImageData: selectedImage.url.includes('base64,') 
+              ? selectedImage.url.split('base64,')[1] 
+              : selectedImage.url,
+            sceneTitle: scene.title,
+            sceneDescription: scene.description
+          };
+        })
+        .filter(Boolean);
+
+      if (sceneData.length === 0) {
+        throw new Error('No valid scenes found for batch processing');
+      }
+
+      setStoryboard(prev => ({
+        ...prev,
+        isProcessingBatchApplication: true,
+        currentBatchProcessingScenes: sceneIds
+      }));
+
+      console.log('🔄 Starting batch character application...');
+      console.log(`📊 Processing ${sceneData.length} scenes with character: ${character.name}`);
+
+      // Call the batch character application API
+      const response = await fetch('/api/batch-character-application', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          characterReference: character,
+          sceneData,
+          prompt: prompt || `Replace the main character in these scenes with ${character.name}`
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Batch character application failed');
+      }
+
+      const data = await response.json();
+
+      if (!data.success || !data.data) {
+        throw new Error('Batch processing failed');
+      }
+
+      const batchResult: BatchCharacterApplicationResult = data.data;
+
+      // Update scenes with new images and replacement data
+      setStoryboard(prev => ({
+        ...prev,
+        plan: prev.plan ? {
+          ...prev.plan,
+          scenes: prev.plan.scenes.map(scene => {
+            const sceneResult = batchResult.results.find(result => result.sceneId === scene.id);
+            if (!sceneResult || !sceneResult.success || !sceneResult.replacedImages) {
+              return scene;
+            }
+
+            // Create character replacement request
+            const replacementRequest: CharacterReplacementRequest = {
+              id: `batch_req_${Date.now()}_${scene.id}_${Math.random().toString(36).substr(2, 9)}`,
+              sceneId: scene.id,
+              characterReference: character,
+              replacementPrompt: prompt || `Batch application of ${character.name}`,
+              createdAt: new Date()
+            };
+
+            // Create replacement result
+            const replacementResult: CharacterReplacementResult = {
+              originalImageId: scene.selectedImageId || '',
+              replacedImageId: sceneResult.replacedImages[0].id,
+              characterReference: character,
+              prompt: replacementRequest.replacementPrompt,
+              success: true,
+              createdAt: new Date()
+            };
+
+            return {
+              ...scene,
+              generatedImages: [...scene.generatedImages, ...sceneResult.replacedImages],
+              characterReplacements: [...(scene.characterReplacements || []), replacementRequest],
+              replacedImages: [...(scene.replacedImages || []), replacementResult]
+            };
+          })
+        } : null,
+        isProcessingBatchApplication: false,
+        currentBatchProcessingScenes: []
+      }));
+
+      console.log(`✅ Batch character application completed: ${batchResult.successfulScenes}/${batchResult.totalScenes} successful`);
+
+      // Show success message
+      alert(`Batch processing completed! Applied ${character.name} to ${batchResult.successfulScenes} out of ${batchResult.totalScenes} scenes.`);
+
+    } catch (error) {
+      console.error('❌ Batch character application error:', error);
+      setStoryboard(prev => ({
+        ...prev,
+        isProcessingBatchApplication: false,
+        currentBatchProcessingScenes: []
+      }));
+      alert(error instanceof Error ? error.message : 'Batch character application failed. Please try again.');
+    }
+  };
+
+  // Quick apply character to a specific scene
+  const handleQuickApplyCharacter = async (characterId: string, sceneId: string) => {
+    const character = storyboard.characterReferences.find(char => char.id === characterId);
+    if (!character) {
+      alert('Character not found');
+      return;
+    }
+
+    // Use the existing single character replacement handler
+    await handleCharacterReplacementRequest({
+      sceneId,
+      characterReference: character,
+      replacementPrompt: `Replace the main character in this scene with ${character.name}`
+    });
   };
 
   const handleGenerateVideo = async () => {
@@ -884,6 +1167,16 @@ Create seamless video with talking characters, synchronized audio, professional 
                         onEditImage={handleEditSceneImage}
                         isGeneratingImages={storyboard.isGeneratingImages}
                         currentGeneratingScene={storyboard.currentGeneratingScene}
+                        characterReferences={storyboard.characterReferences}
+                        onAddCharacterReference={handleAddCharacterReference}
+                        onRemoveCharacterReference={handleRemoveCharacterReference}
+                        onCharacterReplacementRequest={handleCharacterReplacementRequest}
+                        isProcessingCharacterReplacement={storyboard.isProcessingCharacterReplacement}
+                        currentReplacingScene={storyboard.currentReplacingScene}
+                        onBatchCharacterApplication={handleBatchCharacterApplication}
+                        onQuickApplyCharacter={handleQuickApplyCharacter}
+                        isProcessingBatchApplication={storyboard.isProcessingBatchApplication}
+                        currentBatchProcessingScenes={storyboard.currentBatchProcessingScenes}
                       />
                     )}
                   </div>
@@ -1349,6 +1642,18 @@ interface StoryboardSelectionProps {
   onEditImage: (sceneId: string, imageId: string, editPrompt: string) => void;
   isGeneratingImages: boolean;
   currentGeneratingScene: number | null;
+  // Character replacement props
+  characterReferences: HumanCharacterReference[];
+  onAddCharacterReference: (character: HumanCharacterReference) => void;
+  onRemoveCharacterReference: (characterId: string) => void;
+  onCharacterReplacementRequest: (request: Omit<CharacterReplacementRequest, 'id' | 'createdAt'>) => void;
+  isProcessingCharacterReplacement: boolean;
+  currentReplacingScene: string | null;
+  // Batch processing props
+  onBatchCharacterApplication: (characterId: string, sceneIds: string[], prompt?: string) => void;
+  onQuickApplyCharacter: (characterId: string, sceneId: string) => void;
+  isProcessingBatchApplication: boolean;
+  currentBatchProcessingScenes: string[];
 }
 
 const StoryboardSelection: React.FC<StoryboardSelectionProps> = ({
@@ -1357,7 +1662,17 @@ const StoryboardSelection: React.FC<StoryboardSelectionProps> = ({
   onSelectImage,
   onEditImage,
   isGeneratingImages,
-  currentGeneratingScene
+  currentGeneratingScene,
+  characterReferences,
+  onAddCharacterReference,
+  onRemoveCharacterReference,
+  onCharacterReplacementRequest,
+  isProcessingCharacterReplacement,
+  currentReplacingScene,
+  onBatchCharacterApplication,
+  onQuickApplyCharacter,
+  isProcessingBatchApplication,
+  currentBatchProcessingScenes
 }) => {
   const [editPrompts, setEditPrompts] = useState<Record<string, string>>({});
   const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
@@ -1393,6 +1708,24 @@ const StoryboardSelection: React.FC<StoryboardSelectionProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Character Reference Upload */}
+      <CharacterReferenceUpload
+        characterReferences={characterReferences}
+        onAddCharacter={onAddCharacterReference}
+        onRemoveCharacter={onRemoveCharacterReference}
+        maxCharacters={5}
+      />
+
+      {/* Character Consistency Manager */}
+      <CharacterConsistencyManager
+        characterReferences={characterReferences}
+        scenes={storyboardPlan.scenes}
+        onBatchCharacterApplication={onBatchCharacterApplication}
+        onQuickApplyCharacter={onQuickApplyCharacter}
+        isProcessingBatch={isProcessingBatchApplication}
+        currentProcessingScenes={currentBatchProcessingScenes}
+      />
 
       {/* Scene-by-Scene Selection */}
       {storyboardPlan.scenes.map((scene, index) => (
@@ -1546,6 +1879,18 @@ const StoryboardSelection: React.FC<StoryboardSelectionProps> = ({
                 )}
               </div>
             )}
+
+            {/* Character Replacement Interface */}
+            <CharacterReplacementInterface
+              sceneId={scene.id}
+              selectedImage={scene.generatedImages.find(img => img.id === scene.selectedImageId) || null}
+              characterReferences={characterReferences}
+              existingReplacements={scene.characterReplacements || []}
+              onRequestReplacement={onCharacterReplacementRequest}
+              onQuickApplyCharacter={onQuickApplyCharacter}
+              isProcessing={isProcessingCharacterReplacement && currentReplacingScene === scene.id}
+              className="mt-6"
+            />
           </CardContent>
         </Card>
       ))}

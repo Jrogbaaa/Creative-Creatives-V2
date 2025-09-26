@@ -46,7 +46,7 @@ class NanaBananaService {
               mimeType: 'image/png', // Assuming PNG, could be dynamic
               data: imageData
             }
-          });
+          } as any);
         });
       }
 
@@ -143,12 +143,49 @@ class NanaBananaService {
   async composeImages(
     prompt: string, 
     inputImages: string[]
-  ): Promise<NanaBananaResponse> {
+  ): Promise<NanoBananaResponse> {
     return this.generateImage({
       prompt,
       editMode: 'multi-image-composition',  
       inputImages
     });
+  }
+
+  /**
+   * Replace characters in images using reference photos
+   */
+  async replaceCharacter(
+    originalImageData: string,
+    characterImageData: string,
+    prompt: string,
+    options?: {
+      targetDescription?: string;
+      preserveStyle?: boolean;
+      characterDescription?: string;
+    }
+  ): Promise<NanoBananaResponse> {
+    const { targetDescription, preserveStyle = true, characterDescription } = options || {};
+    
+    // Build enhanced prompt for character replacement
+    let enhancedPrompt = prompt;
+    
+    if (targetDescription) {
+      enhancedPrompt += `. Specifically replace ${targetDescription}.`;
+    }
+    
+    if (preserveStyle) {
+      enhancedPrompt += ` Maintain the original image's style, lighting, composition, background, and overall aesthetic. `;
+      enhancedPrompt += `Only replace the specified person/character while keeping everything else exactly the same. `;
+      enhancedPrompt += `The replacement should look natural and seamlessly integrated into the original scene.`;
+    }
+    
+    if (characterDescription) {
+      enhancedPrompt += ` The new character is described as: ${characterDescription}.`;
+    }
+    
+    console.log('👤 [Nano Banana] Character replacement prompt:', enhancedPrompt);
+    
+    return this.composeImages(enhancedPrompt, [originalImageData, characterImageData]);
   }
 
   /**

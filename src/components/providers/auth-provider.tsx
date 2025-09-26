@@ -15,6 +15,7 @@ const mockUser: User = {
   photoURL: null,
   phoneNumber: null,
   providerId: 'firebase',
+  tenantId: null,
   metadata: {
     creationTime: new Date().toISOString(),
     lastSignInTime: new Date().toISOString()

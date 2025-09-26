@@ -14,13 +14,24 @@ Transform your advertising with cutting-edge AI technology. Create professional 
 - **Professional Quality**: 720p/1080p video with synchronized audio and effects
 - **Long-running Operations**: Approved quota with predictLongRunning endpoint
 
-### 🍌 Nano Banana Image Generation *(NEW)*
+### 🍌 Nano Banana Image Generation *(ENHANCED)*
 - **Gemini 2.5 Flash Image**: Google's latest AI image creation and editing technology  
 - **Text-to-Image**: Generate high-quality images from descriptive prompts
 - **Image Editing**: Modify existing images with natural language commands
 - **Multi-Image Composition**: Combine and style multiple images seamlessly
+- **Character Replacement**: Replace people in scenes with uploaded characters *(NEW)*
 - **Iterative Refinement**: Chat-based editing for perfect results
 - **User Approval Workflow**: Review and approve images before video generation
+
+### 👥 Character Replacement System *(BRAND NEW)*
+- **Human Character Upload**: Upload and manage photos of real people
+- **Smart Character Detection**: AI automatically identifies people in scenes
+- **One-Click Replacement**: Replace any person with your uploaded characters
+- **Batch Processing**: Apply same character across all scenes simultaneously
+- **Style Consistency**: Maintains original lighting, composition, and mood
+- **Character Library**: Save and reuse characters across multiple projects
+- **Quick Apply Workflow**: Streamlined UI for rapid character application
+- **Development Mode**: Full testing capability without API keys required
 
 ### 🧠 Marcus Creative Director AI *(REVOLUTIONARY v2.0)*
 - **Elite Cinematography Mastery**: Sergio Leone-inspired visual techniques for cinematic excellence
@@ -62,7 +73,17 @@ Transform your advertising with cutting-edge AI technology. Create professional 
 
 ## 🆕 **Latest Updates (December 2025)**
 
-### 🎬🧠 **MARCUS REVOLUTIONARY v2.0: Elite Cinematography + Advertising Science** *(JUST RELEASED)*
+### 👥✨ **CHARACTER REPLACEMENT & CONSISTENCY SYSTEM** *(BRAND NEW FEATURE)*
+- **Human Character Upload**: Upload photos of real people to feature in your ads ✅
+- **AI-Powered Character Replacement**: Replace anyone in any scene with your uploaded person ✅
+- **Batch Character Application**: Apply one character consistently across all storyboard scenes ✅
+- **Character Library Management**: Save and reuse characters across multiple projects ✅
+- **Quick-Apply Buttons**: One-click character replacement per scene ✅
+- **Development Mode Ready**: Test all features with mock responses (no API keys required) ✅
+- **Nano Banana Integration**: Uses Gemini 2.5 Flash Image for seamless character integration ✅
+- **Style Preservation**: Maintains original scene lighting, mood, and composition ✅
+
+### 🎬🧠 **MARCUS REVOLUTIONARY v2.0: Elite Cinematography + Advertising Science** *(ENHANCED)*
 - **Sergio Leone Cinematography Mastery**: Juxtaposition principle, extreme close-ups, environmental storytelling ✅
 - **Research-Backed Advertising Effectiveness**: Systematic literature insights from 28 studies (8,214 participants) ✅
 - **Platform Optimization Excellence**: Instagram/TikTok (9:16), YouTube (16:9), Facebook (1:1) specific strategies ✅
@@ -70,7 +91,7 @@ Transform your advertising with cutting-edge AI technology. Create professional 
 - **GenAI-Human Collaboration Science**: Leverages GPT-4's proven 27% creative output advantage ✅
 - **Visual Storytelling Mastery**: Every frame composed like a masterpiece painting ✅
 - **Multi-Platform Synergy**: Consistent brand messaging optimized for each platform ✅
-- **Simplified User Experience**: Marcus handles creative complexity while keeping process intuitive ✅
+- **Character-Aware Planning**: Marcus integrates uploaded characters into storyboard planning ✅
 
 ## 🆕 **Previous Updates (September 2025)**
 
@@ -315,19 +336,38 @@ node playwright-final-test.js
 
 ### Ad Creation Process
 
-**🎬 4-Step Professional Process (Updated for Nano Banana):**
+**🎬 Enhanced 5-Step Professional Process:**
 
 1. **Brand Information**: Define your brand identity, voice, and target audience
-2. **🍌 Image Generation & Approval**: 
-   - Generate consistent characters and products with Nano Banana
-   - Edit images with natural language commands
-   - Approve final images for video production
-3. **Video Concept Design**: Configure duration, aspect ratio, and creative direction
-4. **🎥 Video Generation with Sound**: 
-   - VEO 3 creates video using approved images
+2. **👥 Character Upload & Management** *(NEW)*:
+   - Upload photos of real people to feature in your ads
+   - Create a character library for consistent brand representation
+   - Name and describe characters for easy management
+3. **🍌 Storyboard Generation & Character Replacement**: 
+   - Marcus creates professional storyboard with scene-by-scene planning
+   - Generate initial scene images with Nano Banana
+   - Apply uploaded characters to any or all scenes with one click
+   - Use batch processing for consistent character application
+4. **Video Concept Design**: Configure duration, aspect ratio, and creative direction
+5. **🎥 Video Generation with Sound**: 
+   - VEO 3 creates video using character-replaced scene images
    - Includes talking characters with synchronized audio
    - Professional sound effects and music
    - Complete 30-second advertisement ready for deployment
+
+### Character Replacement Workflow *(NEW FEATURE)*
+
+**Upload & Apply Characters in 3 Simple Steps:**
+
+1. **Upload**: Add photos of people you want to feature in your ads
+2. **Replace**: Click on any scene and apply your character with one button
+3. **Batch Apply**: Use "Apply to All Scenes" for consistent character presence
+
+**Advanced Features:**
+- **Style Preservation**: Characters blend naturally with original scene aesthetics
+- **Quick Apply**: One-click buttons for instant character replacement per scene
+- **Character Consistency**: Apply same person across multiple scenes simultaneously
+- **Development Testing**: Full workflow available without API keys for testing
 
 ### Creative Expert (Marcus) Tips
 
@@ -343,9 +383,11 @@ src/
 ├── app/                    # Next.js App Router pages
 │   ├── api/               # API routes
 │   │   ├── chat/         # Marcus chat API
-│   │   ├── generate-image/    # Nano Banana image generation *(NEW)*
-│   │   ├── generate-storyboard/ # Marcus storyboard planning *(NEW)*
+│   │   ├── generate-image/    # Nano Banana image generation *(ENHANCED)*
+│   │   ├── generate-storyboard/ # Marcus storyboard planning *(ENHANCED)*
 │   │   ├── generate-video/    # VEO 3 video generation
+│   │   ├── replace-character/ # Character replacement API *(NEW)*
+│   │   ├── batch-character-application/ # Batch character processing *(NEW)*
 │   │   └── video-status/ # Video generation status
 │   ├── create/           # Ad creation workflow *(ENHANCED)*
 │   ├── dashboard/        # Dashboard page
@@ -358,6 +400,9 @@ src/
 │   ├── dashboard/       # Dashboard components (+ empty states)
 │   ├── layout/          # Layout components
 │   ├── providers/       # Context providers (+ logging)
+│   ├── CharacterReferenceUpload.tsx     # Character upload component *(NEW)*
+│   ├── CharacterReplacementInterface.tsx # Per-scene replacement UI *(NEW)*
+│   ├── CharacterConsistencyManager.tsx   # Batch character management *(NEW)*
 │   └── ui/              # Reusable UI components
 │       ├── error-boundary.tsx  # React error boundaries
 │       ├── offline-banner.tsx  # Network status banner
@@ -458,6 +503,59 @@ const editResponse = await fetch('/api/generate-image', {
     editMode: 'edit'
   })
 });
+```
+
+### 👥 Character Replacement API *(NEW)*
+
+```typescript
+// Single Character Replacement
+const replacementRequest = {
+  originalImageData: base64SceneImage,
+  characterReference: {
+    id: "char_123",
+    name: "CEO Sarah",
+    imageData: base64CharacterImage,
+    mimeType: "image/jpeg",
+    description: "Professional business leader"
+  },
+  replacementPrompt: "Replace the person in this office scene with CEO Sarah",
+  targetDescription: "the person at the desk"
+};
+
+const response = await fetch('/api/replace-character', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(replacementRequest)
+});
+
+// Batch Character Application (Apply to Multiple Scenes)
+const batchRequest = {
+  characterReference: characterData,
+  sceneData: [
+    {
+      sceneId: "scene_1",
+      selectedImageData: base64Scene1,
+      sceneTitle: "Opening Hook",
+      sceneDescription: "Professional in modern office"
+    },
+    {
+      sceneId: "scene_2", 
+      selectedImageData: base64Scene2,
+      sceneTitle: "Product Demo",
+      sceneDescription: "Using the software"
+    }
+  ],
+  prompt: "Replace main character with our CEO across all scenes"
+};
+
+const batchResponse = await fetch('/api/batch-character-application', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(batchRequest)
+});
+
+// Result: All scenes updated with consistent character
+const { results, successfulScenes, failedScenes } = await batchResponse.json();
 ```
 
 ### Multi-Provider Creative Expert

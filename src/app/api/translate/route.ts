@@ -18,7 +18,12 @@ export async function POST(request: NextRequest) {
     const translationPrompt = createTranslationPrompt(sourceLanguage, targetLanguage, translations);
     
     const marcusResponse = await callMarcusLLM([
-      { role: 'user', content: translationPrompt }
+      { 
+        id: `translate_${Date.now()}`,
+        role: 'user', 
+        content: translationPrompt,
+        timestamp: new Date()
+      }
     ], {
       currentGoal: 'translation',
       extractedInfo: { sourceLanguage, targetLanguage }

@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { firebaseVideos } from '@/lib/firebase-videos';
 
-interface RouteParams {
-  params: {
-    videoId: string;
-  };
-}
-
 // GET /api/user/videos/[videoId] - Get specific video
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ videoId: string }> }
+) {
   try {
-    const { videoId } = params;
+    const { videoId } = await params;
 
     if (!videoId) {
       return NextResponse.json(
@@ -43,9 +40,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 // PUT /api/user/videos/[videoId] - Update video
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ videoId: string }> }
+) {
   try {
-    const { videoId } = params;
+    const { videoId } = await params;
     const body = await request.json();
 
     if (!videoId) {
@@ -87,9 +87,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 // DELETE /api/user/videos/[videoId] - Delete video
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ videoId: string }> }
+) {
   try {
-    const { videoId } = params;
+    const { videoId } = await params;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
 

@@ -385,8 +385,9 @@ export const withFeatureFlag = <P extends object>(
   const WrappedComponent = (props: P) => (
     React.createElement(FeatureGate, {
       flag,
-      fallback: FallbackComponent ? React.createElement(FallbackComponent, props) : null
-    }, React.createElement(Component, props))
+      fallback: FallbackComponent ? React.createElement(FallbackComponent, props) : null,
+      children: React.createElement(Component, props)
+    })
   );
   
   WrappedComponent.displayName = `withFeatureFlag(${Component.displayName || Component.name})`;

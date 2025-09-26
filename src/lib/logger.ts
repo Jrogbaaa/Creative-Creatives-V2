@@ -263,8 +263,8 @@ export const logWithContext = (category: LogEvent['category'], event: string, da
 };
 
 // Performance monitoring helper
-export const measurePerformance = (name: string, fn: () => Promise<any>) => {
-  return async (...args: any[]) => {
+export const measurePerformance = <T extends any[], R>(name: string, fn: (...args: T) => Promise<R>) => {
+  return async (...args: T): Promise<R> => {
     const startTime = performance.now();
     try {
       const result = await fn.apply(null, args);

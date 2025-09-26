@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { googleAI } from '@/lib/google-ai';
 
-interface RouteParams {
-  params: {
-    jobId: string;
-  };
-}
-
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ jobId: string }> }
+) {
   try {
-    let { jobId } = params;
+    let { jobId } = await params;
     
     // Handle URL-encoded jobId (decode if necessary)
     if (jobId) {

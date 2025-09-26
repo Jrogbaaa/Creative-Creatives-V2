@@ -390,11 +390,14 @@ Respond in this exact JSON format:
     return scenes.map((scene, index) => {
       if (index === scenes.length - 1) {
         // Last scene gets remaining duration
-        return { ...scene, duration: Math.max(remainingDuration, 2) };
+        const finalDuration = Math.max(remainingDuration, 4);
+        const validDuration = finalDuration <= 4 ? 4 : finalDuration <= 6 ? 6 : 8;
+        return { ...scene, duration: validDuration as 4 | 6 | 8 };
       } else {
-        const adjustedDuration = Math.max(Math.floor(scene.duration * ratio), 2);
-        remainingDuration -= adjustedDuration;
-        return { ...scene, duration: adjustedDuration };
+        const adjustedDuration = Math.max(Math.floor(scene.duration * ratio), 4);
+        const validDuration = adjustedDuration <= 4 ? 4 : adjustedDuration <= 6 ? 6 : 8;
+        remainingDuration -= validDuration;
+        return { ...scene, duration: validDuration as 4 | 6 | 8 };
       }
     });
   }
@@ -481,7 +484,7 @@ Respond in this exact JSON format:
    * Extract properly structured scenes from text
    */
   private extractStructuredScenes(text: string, request: MarcusStoryboardRequest, maxScenes: number, optimalDuration: number): any[] {
-    const scenes = [];
+    const scenes: any[] = [];
     const scenePatterns = [
       /scene\s*(\d+)[:\-\s]+(.*?)(?=scene\s*\d+|$)/gi,
       /(\d+)\.?\s*\*?\*?(scene|shot|hook|solution|call.to.action)[:\-\s]+(.*?)(?=\d+\.|$)/gi
@@ -650,11 +653,13 @@ Respond in this exact JSON format:
     // Create 3 generic scenes that total 30 seconds
     const fallbackScenes = [
       {
+        id: `scene_1_${Date.now()}`,
         sceneNumber: 1,
         title: "Hook & Problem",
         description: `Opening scene showing the challenge faced by ${industry} professionals`,
-        duration: 8,
+        duration: 8 as 4 | 6 | 8,
         prompt: `Professional scene showing busy ${industry} workers struggling with manual processes, dynamic lighting, corporate environment`,
+        generatedImages: [],
         visualStyle: {
           lighting: "natural office lighting",
           mood: "focused but overwhelmed", 
@@ -663,11 +668,13 @@ Respond in this exact JSON format:
         }
       },
       {
+        id: `scene_2_${Date.now()}`,
         sceneNumber: 2,
         title: "Solution Introduction",
         description: `Introducing ${brandName} as the solution`,
-        duration: 12,
+        duration: 8 as 4 | 6 | 8,
         prompt: `Clean, modern scene showcasing ${brandName} software interface, bright optimistic lighting, technology focus`,
+        generatedImages: [],
         visualStyle: {
           lighting: "bright, clean lighting",
           mood: "optimistic and innovative",
@@ -676,11 +683,13 @@ Respond in this exact JSON format:
         }
       },
       {
+        id: `scene_3_${Date.now()}`,
         sceneNumber: 3,
         title: "Transformation & CTA",
         description: `Happy, productive professionals using the solution`,
-        duration: 10,
+        duration: 6 as 4 | 6 | 8,
         prompt: `Satisfied professionals efficiently working with ${brandName}, warm lighting, success and productivity theme`,
+        generatedImages: [],
         visualStyle: {
           lighting: "warm, successful ambiance",
           mood: "satisfied and productive",
@@ -721,7 +730,7 @@ Respond in this exact JSON format:
         solution: `${brandName} automates and streamlines your workflow`,
         callToAction: `Transform your productivity with ${brandName} today`
       },
-      createdBy: 'marcus',
+      createdBy: 'marcus' as const,
       createdAt: new Date()
     };
   }

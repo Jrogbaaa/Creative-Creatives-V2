@@ -91,9 +91,7 @@ if (!isFirebaseConfigured) {
           industry: 'Technology',
           targetAudience: 'Developers and entrepreneurs'
         },
-        sceneCount: 4,
-        style: 'professional',
-        generationType: 'image-to-video'
+        sceneCount: 4
       }
     },
     {
@@ -117,9 +115,7 @@ if (!isFirebaseConfigured) {
           industry: 'Fashion',
           targetAudience: 'Young adults 18-25'
         },
-        sceneCount: 2,
-        style: 'vibrant',
-        generationType: 'image-to-video'
+        sceneCount: 2
       }
     },
     {
@@ -142,9 +138,7 @@ if (!isFirebaseConfigured) {
           industry: 'Food & Beverage',
           targetAudience: 'Food lovers and local diners'
         },
-        sceneCount: 3,
-        style: 'cinematic',
-        generationType: 'image-to-video'
+        sceneCount: 3
       }
     }
   ];

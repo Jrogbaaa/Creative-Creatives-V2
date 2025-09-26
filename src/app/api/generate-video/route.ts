@@ -10,6 +10,31 @@ export async function POST(request: NextRequest) {
                           process.env.GOOGLE_CLOUD_PRIVATE_KEY;
 
     if (!hasCredentials) {
+      console.log('🚧 [DEV MODE] Google Cloud credentials not configured - using mock video generation');
+      
+      // Development mode: Return a mock successful response
+      if (process.env.NODE_ENV === 'development') {
+        const mockJobId = `dev_job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        console.log('🎬 [DEV MODE] Mock video generation started with job ID:', mockJobId);
+        
+        return NextResponse.json({
+          success: true,
+          jobId: mockJobId,
+          message: 'Mock video generation started (development mode)',
+          development_mode: true,
+          setup_instructions: {
+            description: 'To enable real video generation, configure Google Cloud credentials:',
+            required_vars: [
+              'GOOGLE_CLOUD_PROJECT_ID',
+              'GOOGLE_CLOUD_CLIENT_EMAIL', 
+              'GOOGLE_CLOUD_PRIVATE_KEY'
+            ],
+            docs_url: 'https://cloud.google.com/docs/authentication/getting-started'
+          }
+        });
+      }
+
       return NextResponse.json(
         { 
           error: 'Google Cloud credentials not configured',
@@ -56,17 +81,45 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Video generation API error:', error);
+    console.error('❌ [API] Video generation error:', error);
     
-    // Check if it's an authentication error
+    // Get detailed error information
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const isAuthError = errorMessage.includes('auth') || errorMessage.includes('credentials') || errorMessage.includes('permission');
+    const isAuthError = errorMessage.includes('auth') || errorMessage.includes('credentials') || errorMessage.includes('permission') || errorMessage.includes('401') || errorMessage.includes('403');
+    const isQuotaError = errorMessage.includes('quota') || errorMessage.includes('limit') || errorMessage.includes('Preview Access Required');
+    const isNotFoundError = errorMessage.includes('404') || errorMessage.includes('not found');
+    
+    console.error('❌ [API] Error details:', {
+      errorMessage,
+      isAuthError,
+      isQuotaError,
+      isNotFoundError,
+      errorType: typeof error
+    });
+
+    let responseError = 'Failed to generate video';
+    let setupRequired = false;
+
+    if (isAuthError) {
+      responseError = 'Google Cloud authentication failed';
+      setupRequired = true;
+    } else if (isQuotaError) {
+      responseError = 'VEO 3 access required - apply for preview access';
+      setupRequired = true;
+    } else if (isNotFoundError) {
+      responseError = 'VEO 3 model not available in your region/project';
+      setupRequired = true;
+    }
     
     return NextResponse.json(
       { 
-        error: isAuthError ? 'Google Cloud authentication failed' : 'Failed to generate video',
+        error: responseError,
         details: errorMessage,
-        setup_required: isAuthError
+        setup_required: setupRequired,
+        // Include additional debug info in development
+        debug: process.env.NODE_ENV === 'development' ? {
+          originalError: error instanceof Error ? error.stack : String(error)
+        } : undefined
       },
       { status: 500 }
     );

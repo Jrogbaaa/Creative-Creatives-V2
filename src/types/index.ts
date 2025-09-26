@@ -211,6 +211,9 @@ export interface StoryboardScene {
     cameraAngle: string;
     composition: string;
   };
+  // Character replacement capabilities
+  characterReplacements?: CharacterReplacementRequest[];
+  replacedImages?: CharacterReplacementResult[];
 }
 
 // Complete Storyboard Plan
@@ -247,6 +250,18 @@ export interface StoryboardPlan {
   };
   createdBy: 'marcus';
   createdAt: Date;
+  // Human character references for replacement
+  characterReferences?: HumanCharacterReference[];
+}
+
+// Brand Information Interface
+export interface BrandInfo {
+  name: string;
+  industry: string;
+  targetAudience: string;
+  brandVoice: 'professional' | 'casual' | 'friendly' | 'authoritative' | 'playful';
+  colorPalette: string[];
+  description: string;
 }
 
 // Marcus Scene Planning Request
@@ -282,4 +297,53 @@ export interface LlamaResponse {
     completion_tokens: number;
     total_tokens: number;
   };
+}
+
+// Human Character Replacement Types
+export interface HumanCharacterReference {
+  id: string;
+  name: string; // User-given name for the person (e.g., "CEO John", "Model Sarah")
+  imageData: string; // base64 encoded image
+  mimeType: string; // e.g., 'image/png', 'image/jpeg'
+  uploadedAt: Date;
+  description?: string; // Optional description of the person
+}
+
+export interface CharacterReplacementRequest {
+  id: string;
+  sceneId: string; // Which scene this replacement applies to
+  characterReference: HumanCharacterReference;
+  replacementPrompt: string; // Natural language prompt like "replace the person in this ad with this person"
+  targetDescription?: string; // Optional description of what/who to replace
+  createdAt: Date;
+}
+
+export interface CharacterReplacementResult {
+  originalImageId: string;
+  replacedImageId: string;
+  characterReference: HumanCharacterReference;
+  prompt: string;
+  success: boolean;
+  error?: string;
+  createdAt: Date;
+}
+
+// Batch Character Application Types
+export interface BatchCharacterApplicationRequest {
+  characterId: string;
+  sceneIds: string[];
+  prompt?: string;
+}
+
+export interface BatchCharacterApplicationResult {
+  characterId: string;
+  results: {
+    sceneId: string;
+    success: boolean;
+    replacedImages?: ImageAsset[];
+    error?: string;
+  }[];
+  totalScenes: number;
+  successfulScenes: number;
+  failedScenes: number;
 }

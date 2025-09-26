@@ -6,6 +6,31 @@ export async function POST(request: NextRequest) {
   try {
     // Check if Gemini API key is configured
     if (!process.env.GEMINI_API_KEY) {
+      console.log('🚧 [DEV MODE] GEMINI_API_KEY not configured - using mock image generation');
+      
+      // Development mode: Return mock generated images
+      if (process.env.NODE_ENV === 'development') {
+        const mockImages = [{
+          id: `mock_img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          data: 'PHN2ZyB3aWR0aD0iNTAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI0MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0iIzY2NzA4NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk1vY2sgR2VuZXJhdGVkIEltYWdlPC90ZXh0Pjx0ZXh0IHg9IjUwJSIgeT0iNjAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Y2E0YWYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj4oRGV2ZWxvcG1lbnQgTW9kZSk8L3RleHQ+PHRleHQgeD0iNTAlIiB5PSI3NSUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzljYTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkNvbmZpZ3VyZSBHRU1JTklfQVBJX0tFWSBmb3IgcmVhbCBnZW5lcmF0aW9uPC90ZXh0Pjwvc3ZnPg==',
+          mimeType: 'image/svg+xml'
+        }];
+
+        console.log('🎨 [DEV MODE] Mock image generation completed');
+        
+        return NextResponse.json({
+          success: true,
+          images: mockImages,
+          message: 'Mock image generated successfully (development mode)',
+          development_mode: true,
+          setup_instructions: {
+            description: 'To enable real image generation, configure Gemini API key:',
+            required_vars: ['GEMINI_API_KEY'],
+            docs_url: 'https://ai.google.dev/gemini-api/docs/api-key'
+          }
+        });
+      }
+
       return NextResponse.json(
         { 
           error: 'Gemini API key not configured',

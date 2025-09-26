@@ -139,8 +139,17 @@ class GoogleAIService {
       console.log('✅ VEO job started successfully! Job ID:', data.name);
       return { jobId: data.name }; // Returns operation name as job ID
     } catch (error) {
-      console.error('Video generation error:', error);
-      throw new Error('Failed to generate video with Veo');
+      console.error('❌ [VEO3] Video generation error details:', error);
+      
+      // Preserve original error message for better debugging
+      if (error instanceof Error) {
+        console.error('❌ [VEO3] Error message:', error.message);
+        console.error('❌ [VEO3] Error stack:', error.stack);
+        throw error; // Re-throw the original error with details
+      } else {
+        console.error('❌ [VEO3] Unknown error type:', typeof error, error);
+        throw new Error(`VEO 3 generation failed: ${String(error)}`);
+      }
     }
   }
 
@@ -247,6 +256,28 @@ class GoogleAIService {
     error?: string 
   }> {
     try {
+      // Handle development mode mock jobs
+      if (jobId.startsWith('dev_job_')) {
+        console.log('🚧 [DEV MODE] Mock video status check for:', jobId);
+        
+        // Simulate video generation completion after 10 seconds
+        const jobTimestamp = parseInt(jobId.split('_')[2]);
+        const timeElapsed = Date.now() - jobTimestamp;
+        
+        if (timeElapsed < 5000) {
+          return { status: 'pending' };
+        } else if (timeElapsed < 10000) {
+          return { status: 'processing' };
+        } else {
+          // Return completed with existing working video
+          console.log('🎬 [DEV MODE] Mock video generation completed');
+          return { 
+            status: 'completed', 
+            videoUrl: '/working_video.mp4' // Use existing sample video
+          };
+        }
+      }
+
       const accessToken = await this.getAccessToken();
       
       const response = await fetch(
